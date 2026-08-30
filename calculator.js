@@ -55,6 +55,8 @@ function explicitPositionPrice(text, label) {
 }
 
 function fenceLine(line, prices) {
+  // «Итого 300», «всего 250 000» — это комментарий к цене, а не новый участок.
+  if (/^\s*(?:итого|всего|общ(?:ая|ий)\s+сумм)/i.test(line)) return null;
   if (/(?:ворот|калит|достав|удлин|откатн|сдвижн|распаш|створк|в\s*сторону)/i.test(line)) return null;
   const lengthMatch = line.match(/(?:^|\s)(\d+(?:[.,]\d+)?)\s*(?:м\.?|м\.п\.?|метр(?:а|ов)?|х|x|×)?/i);
   if (!lengthMatch) return null;
@@ -96,6 +98,26 @@ function deliveryLine(text, length, prices) {
   return { type: "delivery", title: "Доставка", quantity: 1, unit: "рейс", price, amount: price };
 }
 
+function targetTotalIn(text) {
+  const match = String(text).match(/(?:^|\n)\s*(?:итого|всего|общ(?:ая|ий)\s+сумм)[^\d]{0,16}(\d+(?:[ \u00a0]\d{3})*(?:[.,]\d+)?)\s*(к\.?|тыс(?:\.?|яч)?|₽|руб\.?|р\.)?/im);
+  if (!match) return null;
+  const raw = number(String(match[1]).replace(/[ \u00a0]/g, ""));
+  if (!Number.isFinite(raw) || raw <= 0) return null;
+  return match[2] || raw >= 1000 ? raw : raw * 1000;
+}
+
+function applyTargetTotal(fences, fixedLines, targetTotal, length) {
+  if (!targetTotal) return;
+  const fixedAmount = fixedLines.reduce((sum, line) => sum + line.amount, 0);
+  const fenceAmount = targetTotal - fixedAmount;
+  if (fenceAmount <= 0) throw new Error("Итоговая сумма должна быть больше стоимости ворот, калитки и доставки.");
+  const price = fenceAmount / length;
+  for (const fence of fences) {
+    fence.price = price;
+    fence.amount = fence.quantity * price;
+  }
+}
+
 export function calculate(request, prices) {
   const text = String(request ?? "").trim();
   if (!text) throw new Error("Введите параметры забора.");
@@ -111,7 +133,9 @@ export function calculate(request, prices) {
   const extension = /удлин[а-яё]*\s+столб/i.test(text) && /1[,.]5/.test(text);
   if (extension) extras.push({ type: "extra", title: "Удлинение столбов до 1,5 м", quantity: length, unit: "м.п.", price: prices.post_extension_per_m, amount: length * prices.post_extension_per_m });
   const delivery = deliveryLine(text, length, prices);
-  const linesOut = [...fences, ...extras, delivery];
+  const fixedLines = [...extras, delivery];
+  applyTargetTotal(fences, fixedLines, targetTotalIn(text), length);
+  const linesOut = [...fences, ...fixedLines];
   const total = linesOut.reduce((sum, line) => sum + line.amount, 0);
   return { title: `Строительство забора ${length} м под ключ`, length, lines: linesOut, total, priceVersion: prices.version };
 }

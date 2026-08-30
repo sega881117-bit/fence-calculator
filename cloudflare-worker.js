@@ -171,6 +171,8 @@ function explicitPositionPrice(text, label) {
 }
 
 function fenceLine(line, prices) {
+  // «Итого 300», «всего 250 000» — это комментарий к цене, а не новый участок.
+  if (/^\s*(?:итого|всего|общ(?:ая|ий)\s+сумм)/i.test(line)) return null;
   if (/(?:ворот|калит|достав|удлин|откатн|сдвижн|распаш|створк|в\s*сторону)/i.test(line)) return null;
   const match = String(line).match(/(?:^|\s)(\d+(?:[.,]\d+)?)\s*(?:м\.?|м\.п\.?|метр(?:а|ов)?|х|x|×)?/i);
   if (!match || !(num(match[1]) > 0)) return null;
@@ -290,6 +292,26 @@ function deliveryLine(text, length, prices) {
   return { type: "delivery", title: "Доставка", descriptionLines: ["доставка материалов и бригады."], quantity: 1, unit: "рейс", price, amount: price };
 }
 
+function targetTotalIn(text) {
+  const match = String(text).match(/(?:^|\n)\s*(?:итого|всего|общ(?:ая|ий)\s+сумм)[^\d]{0,16}(\d+(?:[ \u00a0]\d{3})*(?:[.,]\d+)?)\s*(к\.?|тыс(?:\.?|яч)?|₽|руб\.?|р\.)?/im);
+  if (!match) return null;
+  const raw = num(String(match[1]).replace(/[ \u00a0]/g, ""));
+  if (!Number.isFinite(raw) || raw <= 0) return null;
+  return match[2] || raw >= 1000 ? raw : raw * 1000;
+}
+
+function applyTargetTotal(fences, fixedLines, targetTotal, length) {
+  if (!targetTotal) return;
+  const fixedAmount = fixedLines.reduce((sum, item) => sum + item.amount, 0);
+  const fenceAmount = targetTotal - fixedAmount;
+  if (fenceAmount <= 0) throw new Error("Итоговая сумма должна быть больше стоимости ворот, калитки и доставки.");
+  const price = fenceAmount / length;
+  for (const fence of fences) {
+    fence.price = price;
+    fence.amount = fence.quantity * price;
+  }
+}
+
 function buildQuote(request, prices) {
   const text = String(request || "").trim();
   if (!text) throw new Error("Введите параметры забора.");
@@ -300,8 +322,11 @@ function buildQuote(request, prices) {
     fences.push(fenceLine(`${match[1]} м профлист`, prices));
   }
   const length = fences.reduce((sum, item) => sum + item.quantity, 0);
-  const lines = [...fences, gateLine(text, prices), wicketLine(text, prices), deliveryLine(text, length, prices)];
-  if (/удлин[а-яё]*\s+столб/i.test(text) && /1[,.]5/.test(text)) lines.splice(-1, 0, { type: "extra", title: "Удлинение столбов до 1,5 м", quantity: length, unit: "м.п.", price: prices.post_extension_per_m, amount: length * prices.post_extension_per_m });
+  const fixedLines = [gateLine(text, prices), wicketLine(text, prices)];
+  if (/удлин[а-яё]*\s+столб/i.test(text) && /1[,.]5/.test(text)) fixedLines.push({ type: "extra", title: "Удлинение столбов до 1,5 м", quantity: length, unit: "м.п.", price: prices.post_extension_per_m, amount: length * prices.post_extension_per_m });
+  fixedLines.push(deliveryLine(text, length, prices));
+  applyTargetTotal(fences, fixedLines, targetTotalIn(text), length);
+  const lines = [...fences, ...fixedLines];
   return { title: `Строительство забора ${length} м под ключ`, length, lines, total: lines.reduce((sum, item) => sum + item.amount, 0), priceVersion: prices.version, priceSource: prices.source };
 }
 

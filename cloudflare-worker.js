@@ -100,7 +100,7 @@ async function readPrices(env) {
     `https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}/values/${encodeURIComponent(range)}`,
     { headers: { authorization: `Bearer ${token}` } },
   );
-  if (!response.ok) throw new Error("google_sheet_read_failed");
+  if (!response.ok) throw new Error(`google_sheet_read_failed_${response.status}`);
   const payload = await response.json();
   const prices = {};
   for (const row of payload.values || []) {

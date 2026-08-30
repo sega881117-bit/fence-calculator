@@ -37,7 +37,7 @@ function headers(origin, env) {
   const allowed = isAllowedOrigin(origin, env) ? origin : DEFAULT_ORIGIN;
   return {
     "access-control-allow-origin": allowed,
-    "access-control-allow-methods": "GET, OPTIONS",
+    "access-control-allow-methods": "GET, POST, OPTIONS",
     "access-control-allow-headers": "content-type",
     "access-control-max-age": "600",
     "content-type": "application/json; charset=utf-8",
@@ -150,7 +150,60 @@ function fenceLine(line, prices) {
   const heightKey = Math.abs(height - 1.8) < 0.01 ? "1_8" : Math.abs(height - 1.7) < 0.01 ? "1_7" : Math.abs(height - 2) < 0.01 ? "2_0" : null;
   const price = explicitRate(line) || prices[`${material.key}_${heightKey}`];
   if (!Number.isFinite(price)) throw new Error(`Нет утверждённой цены: ${material.label}, высота ${height} м.`);
-  return { type: "fence", title: `${material.label}, высота ${formatHeight(height)} м`, quantity: num(match[1]), unit: "м.п.", price, amount: num(match[1]) * price };
+  return {
+    type: "fence",
+    material: material.key,
+    height,
+    title: fenceTitle(material.key, height),
+    descriptionLines: fenceDescription(material.key, height),
+    quantity: num(match[1]), unit: "м.п.", price, amount: num(match[1]) * price,
+  };
+}
+
+function postLength(height, material) {
+  if (material === "mesh3d") return height + 1.2;
+  return height + 1;
+}
+
+function fenceTitle(material, height) {
+  const h = formatHeight(height);
+  if (material === "profile_double") return `Забор из профнастила, покрытие двухстороннее; высота Н-${h} м; 2 лаги.`;
+  if (material === "profile_single") return `Забор из профнастила, покрытие одностороннее; высота Н-${h} м; 2 лаги.`;
+  if (material === "picket_chess") return `Забор из евроштакетника, шахматка; высота Н-${h} м; 2 лаги.`;
+  if (material === "picket_single") return `Забор из евроштакетника, один ряд; высота Н-${h} м; 2 лаги.`;
+  if (material === "mesh3d") return `Забор 3D, высота ${h} м.`;
+  return `Забор из сетки-рабицы, высота Н-${h} м.`;
+}
+
+function fenceDescription(material, height) {
+  const length = formatHeight(postLength(height, material));
+  if (material === "mesh3d") return [
+    "секции 3D RAL 8017, толщина прутка 4 мм;",
+    "3 скобы на 1 секцию;",
+    `столбы 60×60, L-${length} м, толщина стенки 2 мм, покраска DALI RAL 8017;`,
+    "забивание столбов с шагом 2,5 м и заглублением 1,2 м.",
+  ];
+  if (material === "chainlink") return [
+    "оцинкованная сетка-рабица с ячейками 50×50 мм, толщина 1,8 мм;",
+    `столбы L-${length} м, 60×40, толщина стенки 1,5 мм;`,
+    "грунтовка ГФ-021 светло-серого цвета;",
+    "пластиковые заглушки на столбах;",
+    "забивание столбов на глубину до 1 м с шагом 2,5 м.",
+  ];
+  const isPicket = material === "picket_single" || material === "picket_chess";
+  const isDouble = material === "profile_double" || material === "picket_chess";
+  const first = isPicket
+    ? `евроштакетник М-образный, 0,4 мм, RAL 7024, зазор ${material === "picket_chess" ? 7 : 3} см, порядок ${material === "picket_chess" ? "Шахматный" : "Обычный"};`
+    : "профнастил С8, 0,4 мм, RAL 7024, НЛМК;";
+  return [
+    first,
+    `столбы L-${length} м, 60×60, толщина стенки 2 мм;`,
+    "лаги 40×20, толщина стенки 1,5 мм;",
+    "пластиковые заглушки на столбах;",
+    isPicket ? "саморезы в цвет евроштакетника;" : "саморезы в цвет профнастила;",
+    "забивание столбов на глубину 1,2 м с шагом 2,5 м;",
+    isDouble ? "покраска каркаса: Эмаль Dali 3в1." : "грунтовка ГФ-021 светло-серого цвета.",
+  ];
 }
 
 function gateLine(text, prices) {
@@ -160,7 +213,25 @@ function gateLine(text, prices) {
   const width = match ? num(match[1]) : 4;
   if (width > 5 || width < 3) throw new Error("Ворота шире 5 м или уже 3 м требуют ручной проверки.");
   const price = sliding ? (width > 4 ? prices.sliding_5 : prices.sliding_3_4) : (width > 4 ? prices.swing_5 : prices.swing_3_4);
-  return { type: "extra", title: `${sliding ? "Откатные" : "Распашные"} ворота ${formatHeight(width)} м`, quantity: 1, unit: "шт.", price, amount: price, inferred: !gateMentioned };
+  const height = heightIn(text);
+  return {
+    type: "extra", title: sliding ? `Откатные ворота ${formatHeight(width)}×${formatHeight(height)} м, с ручным механизмом.` : `Каркас распашных ворот ${formatHeight(width)}×${formatHeight(height)} м, открывается наружу.`,
+    descriptionLines: sliding ? [
+      "рама из профтрубы 60×40, толщина стенки 1,5 мм; несущая балка; роликовые каретки;",
+      "концевой разгрузочный ролик; нижний улавливатель;",
+      "направляющая с роликами; верхний улавливатель; заглушки;",
+      "опорный столб; ответный столб;",
+      "фундамент для роликовых кареток: сваи 89, 2 шт. на тумбу.",
+    ] : [
+      "каркас из профтрубы 40×20, толщина стенки 1,5 мм;",
+      "столбы 80×80, толщина стенки 3 мм;",
+      "заглубление на 1,5 м;",
+      "изнутри запирающее устройство «гусь» с проушинами для замка;",
+      "2 нижних стопора;",
+      "петли 25×120 мм.",
+    ],
+    quantity: 1, unit: "шт.", price, amount: price, inferred: !gateMentioned,
+  };
 }
 
 function wicketLine(text, prices) {
@@ -168,14 +239,26 @@ function wicketLine(text, prices) {
   const explicit = String(text).match(/калит[^\n]{0,24}?\s(?:по|за)\s*(\d+(?:[.,]\d+)?)\s*(к|к\.|тыс|₽|руб\.?|р\.)?/i);
   const raw = explicit ? num(explicit[1]) : null;
   const price = raw ? (raw < 100 ? raw * 1000 : raw) : (separate ? prices.wicket_separate : prices.wicket_adjacent);
-  return { type: "extra", title: separate ? "Калитка отдельно стоящая (на 2 столбах)" : "Калитка рядом стоящая (на 1 столбе)", quantity: 1, unit: "шт.", price, amount: price };
+  const height = heightIn(text);
+  return {
+    type: "extra",
+    title: separate ? `Каркас отдельно стоящей калитки 1×${formatHeight(height)} м, на двух столбах, открывается наружу.` : `Каркас рядом стоящей калитки 1×${formatHeight(height)} м, на одном столбе, открывается наружу.`,
+    descriptionLines: [
+      "каркас из профтрубы 40×20, толщина стенки 1,5 мм;",
+      `${separate ? "два" : "один"} столба 80×80, толщина стенки 3 мм;`,
+      "заглубление на 1,5 м;",
+      "петли 25×120 мм;",
+      "врезной замок в подарок 🎁.",
+    ],
+    quantity: 1, unit: "шт.", price, amount: price,
+  };
 }
 
 function deliveryLine(text, length, prices) {
   const match = String(text).match(/достав[^\n\d]{0,20}(\d+(?:[.,]\d+)?)\s*(к|тыс|₽|руб\.?|р\.)?/i);
   const raw = match ? num(match[1]) : null;
   const price = raw ? (raw < 100 ? raw * 1000 : raw) : (length <= 60 ? prices.delivery_0_60 : length <= 120 ? prices.delivery_61_120 : prices.delivery_121_plus);
-  return { type: "delivery", title: "Доставка", quantity: 1, unit: "рейс", price, amount: price };
+  return { type: "delivery", title: "Доставка", descriptionLines: ["доставка материалов и бригады."], quantity: 1, unit: "рейс", price, amount: price };
 }
 
 function buildQuote(request, prices) {

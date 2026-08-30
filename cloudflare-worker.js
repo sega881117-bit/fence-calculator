@@ -239,6 +239,8 @@ function fenceDescription(material, height) {
 
 function gateLine(text, prices) {
   const gateMentioned = /(?:ворот|откатн|сдвижн|распаш|створк|в\s*сторону)/i.test(text);
+  // Явно названа только калитка — ворота не предполагаем.
+  if (!gateMentioned && /калит/i.test(text)) return null;
   const sliding = /(?:откатн|сдвижн|в\s*сторону)/i.test(text);
   const match = String(text).match(/(?:ворот\w*|откатн\w*|распаш\w*)[^\n]{0,28}?(3(?:[.,]5)?|4|5)\s*(?:м\.?|метр)/i);
   const width = match ? num(match[1]) : 4;
@@ -322,7 +324,7 @@ function buildQuote(request, prices) {
     fences.push(fenceLine(`${match[1]} м профлист`, prices));
   }
   const length = fences.reduce((sum, item) => sum + item.quantity, 0);
-  const fixedLines = [gateLine(text, prices), wicketLine(text, prices)];
+  const fixedLines = [gateLine(text, prices), wicketLine(text, prices)].filter(Boolean);
   if (/удлин[а-яё]*\s+столб/i.test(text) && /1[,.]5/.test(text)) fixedLines.push({ type: "extra", title: "Удлинение столбов до 1,5 м", quantity: length, unit: "м.п.", price: prices.post_extension_per_m, amount: length * prices.post_extension_per_m });
   fixedLines.push(deliveryLine(text, length, prices));
   applyTargetTotal(fences, fixedLines, targetTotalIn(text), length);

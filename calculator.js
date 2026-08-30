@@ -73,6 +73,8 @@ function fenceLine(line, prices) {
 function gateLine(text, prices) {
   const sliding = /(?:откатн|сдвижн|в\s*сторону)/i.test(text);
   const gateMentioned = /(?:ворот|откатн|сдвижн|распаш|створк|в\s*сторону)/i.test(text);
+  // Явно названа только калитка — ворота не предполагаем.
+  if (!gateMentioned && /калит/i.test(text)) return null;
   const match = text.match(/(?:ворот\w*|откатн\w*|распаш\w*)[^\n]{0,28}?(3(?:[.,]5)?|4|5)\s*(?:м\.?|метр)/i);
   const width = match ? number(match[1]) : 4;
   if (width > 5 || width < 3) throw new Error("Ворота шире 5 м или уже 3 м требуют ручной проверки.");
@@ -129,7 +131,7 @@ export function calculate(request, prices) {
     fences.push(fenceLine(`${match[1]} м профлист`, prices));
   }
   const length = fences.reduce((sum, line) => sum + line.quantity, 0);
-  const extras = [gateLine(text, prices), wicketLine(text, prices)];
+  const extras = [gateLine(text, prices), wicketLine(text, prices)].filter(Boolean);
   const extension = /удлин[а-яё]*\s+столб/i.test(text) && /1[,.]5/.test(text);
   if (extension) extras.push({ type: "extra", title: "Удлинение столбов до 1,5 м", quantity: length, unit: "м.п.", price: prices.post_extension_per_m, amount: length * prices.post_extension_per_m });
   const delivery = deliveryLine(text, length, prices);

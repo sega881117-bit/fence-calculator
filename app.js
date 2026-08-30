@@ -20,7 +20,12 @@ async function draft(request) {
 }
 
 function render(current) {
-  const rows = current.lines.map((line) => `<tr><td>${line.title}</td><td>${line.unit}</td><td>${line.quantity}</td><td>${rub(line.price)}</td><td>${rub(line.amount)}</td></tr>`).join("");
+  const rows = current.lines.map((line) => {
+    const details = Array.isArray(line.descriptionLines) && line.descriptionLines.length
+      ? `<ul class="line-details">${line.descriptionLines.map((item) => `<li>${item}</li>`).join("")}</ul>`
+      : "";
+    return `<tr><td><strong>${line.title}</strong>${details}</td><td>${line.unit}</td><td>${line.quantity}</td><td>${rub(line.price)}</td><td>${rub(line.amount)}</td></tr>`;
+  }).join("");
   result.innerHTML = `<h2>${current.title}</h2><table><thead><tr><th>Работы и материалы</th><th>Ед.</th><th>Кол‑во</th><th>Цена</th><th>Сумма</th></tr></thead><tbody>${rows}</tbody><tfoot><tr><th colspan="4">Итого</th><th>${rub(current.total)}</th></tr></tfoot></table><p class="note">Предварительный расчёт. Точная стоимость подтверждается после замера.</p>`;
   result.hidden = false;
   openPdfButton.disabled = false;

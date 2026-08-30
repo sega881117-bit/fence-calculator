@@ -7,6 +7,7 @@
 const GOOGLE_TOKEN_URL = "https://oauth2.googleapis.com/token";
 const GOOGLE_SHEETS_SCOPE = "https://www.googleapis.com/auth/spreadsheets.readonly";
 const DEFAULT_ORIGIN = "https://sega881117-bit.github.io";
+const DEFAULT_ALLOWED_ORIGINS = ["https://sega881117-bit.github.io", "https://sega171188.amocrm.ru"];
 
 let tokenCache;
 
@@ -24,7 +25,8 @@ const PRICE_KEY_MAP = {
 };
 
 function allowedOrigins(env) {
-  return (env.ALLOWED_ORIGINS || DEFAULT_ORIGIN).split(",").map((item) => item.trim()).filter(Boolean);
+  const configured = String(env.ALLOWED_ORIGINS || "").split(",").map((item) => item.trim()).filter(Boolean);
+  return [...new Set([...DEFAULT_ALLOWED_ORIGINS, ...configured])];
 }
 
 function isAllowedOrigin(origin, env) {

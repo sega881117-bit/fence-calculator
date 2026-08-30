@@ -114,7 +114,7 @@ async function readPrices(env) {
 }
 
 const MATERIALS = [
-  { key: "profile_double", label: "Профлист двухсторонний", test: /двухстор|двустор/i },
+  { key: "profile_double", label: "Профлист двухсторонний", test: /двухстор|двустор|двойн/i },
   { key: "picket_chess", label: "Евроштакетник шахматка", test: /шахмат/i },
   { key: "mesh3d", label: "3D-сетка", test: /(?:3\s*[dд]|гиттер)/i },
   { key: "chainlink", label: "Сетка-рабица", test: /рабиц/i },
@@ -134,9 +134,19 @@ function heightIn(text, fallback = 2) {
   return fallback;
 }
 
+function explicitAmount(value, suffix) {
+  const amount = num(value);
+  return /^(?:к|к\.|тыс)/i.test(String(suffix || "")) ? amount * 1000 : amount;
+}
+
 function explicitRate(text) {
-  const match = String(text).match(/по\s*(\d{3,5})(?:\s*(?:₽|руб\.?|р\.?))?/i);
-  return match ? num(match[1]) : null;
+  const match = String(text).match(/по\s*(\d+(?:[.,]\d+)?)\s*(к\.?|тыс(?:\.?|яч)?|₽|руб\.?|р\.?)?/i);
+  return match ? explicitAmount(match[1], match[2]) : null;
+}
+
+function explicitExtraPrice(text, pattern) {
+  const match = String(text).match(pattern);
+  return match ? explicitAmount(match[1], match[2]) : null;
 }
 
 function materialIn(text) { return MATERIALS.find((material) => material.test.test(text)) || MATERIALS.at(-1); }
@@ -212,7 +222,8 @@ function gateLine(text, prices) {
   const match = String(text).match(/(?:ворот\w*|откатн\w*|распаш\w*)[^\n]{0,28}?(3(?:[.,]5)?|4|5)\s*(?:м\.?|метр)/i);
   const width = match ? num(match[1]) : 4;
   if (width > 5 || width < 3) throw new Error("Ворота шире 5 м или уже 3 м требуют ручной проверки.");
-  const price = sliding ? (width > 4 ? prices.sliding_5 : prices.sliding_3_4) : (width > 4 ? prices.swing_5 : prices.swing_3_4);
+  const statedPrice = explicitExtraPrice(text, /(?:ворот\w*|откатн\w*|распаш\w*)[^\n]{0,36}?(?:по|за)\s*(\d+(?:[.,]\d+)?)\s*(к\.?|тыс(?:\.?|яч)?|₽|руб\.?|р\.?)/i);
+  const price = statedPrice || (sliding ? (width > 4 ? prices.sliding_5 : prices.sliding_3_4) : (width > 4 ? prices.swing_5 : prices.swing_3_4));
   const height = heightIn(text);
   return {
     type: "extra", title: sliding ? `Откатные ворота ${formatHeight(width)}×${formatHeight(height)} м, с ручным механизмом.` : `Каркас распашных ворот ${formatHeight(width)}×${formatHeight(height)} м, открывается наружу.`,
@@ -236,9 +247,8 @@ function gateLine(text, prices) {
 
 function wicketLine(text, prices) {
   const separate = /(?:калит[^\n]{0,36}(?:отдельн|двух\s*столб|2\s*столб)|(?:отдельн|двух\s*столб|2\s*столб)[^\n]{0,36}калит)/i.test(text);
-  const explicit = String(text).match(/калит[^\n]{0,24}?\s(?:по|за)\s*(\d+(?:[.,]\d+)?)\s*(к|к\.|тыс|₽|руб\.?|р\.)?/i);
-  const raw = explicit ? num(explicit[1]) : null;
-  const price = raw ? (raw < 100 ? raw * 1000 : raw) : (separate ? prices.wicket_separate : prices.wicket_adjacent);
+  const statedPrice = explicitExtraPrice(text, /калит[^\n]{0,24}?(?:\s+(?:по|за))?\s+(\d+(?:[.,]\d+)?)\s*(к\.?|тыс(?:\.?|яч)?|₽|руб\.?|р\.)/i);
+  const price = statedPrice || (separate ? prices.wicket_separate : prices.wicket_adjacent);
   const height = heightIn(text);
   return {
     type: "extra",

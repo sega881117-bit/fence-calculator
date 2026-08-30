@@ -1,5 +1,5 @@
 const MATERIALS = [
-  { key: "profile_double", label: "Профлист двухсторонний", test: /двухстор|двустор/i, heights: [1.8, 2] },
+  { key: "profile_double", label: "Профлист двухсторонний", test: /двухстор|двустор|двойн/i, heights: [1.8, 2] },
   { key: "picket_chess", label: "Евроштакетник шахматка", test: /шахмат/i, heights: [1.8, 2] },
   { key: "mesh3d", label: "3D-сетка", test: /(?:3\s*[dд]|гиттер)/i, heights: [1.7, 2] },
   { key: "chainlink", label: "Сетка-рабица", test: /рабиц/i, heights: [1.8, 2] },
@@ -24,9 +24,19 @@ function materialIn(text) {
   return MATERIALS.find((material) => material.test.test(text)) ?? MATERIALS.at(-1);
 }
 
+function explicitAmount(value, suffix) {
+  const amount = number(value);
+  return /^(?:к|к\.|тыс)/i.test(String(suffix || "")) ? amount * 1000 : amount;
+}
+
 function explicitRate(text) {
-  const match = text.match(/по\s*(\d{3,5})(?:\s*(?:₽|руб\.?|р\.?))?/i);
-  return match ? number(match[1]) : null;
+  const match = String(text).match(/по\s*(\d+(?:[.,]\d+)?)\s*(к\.?|тыс(?:\.?|яч)?|₽|руб\.?|р\.?)?/i);
+  return match ? explicitAmount(match[1], match[2]) : null;
+}
+
+function explicitExtraPrice(text, pattern) {
+  const match = String(text).match(pattern);
+  return match ? explicitAmount(match[1], match[2]) : null;
 }
 
 function fenceLine(line, prices) {
@@ -50,7 +60,8 @@ function gateLine(text, prices) {
   const width = match ? number(match[1]) : 4;
   if (width > 5 || width < 3) throw new Error("Ворота шире 5 м или уже 3 м требуют ручной проверки.");
   const kind = sliding ? "Откатные" : "Распашные";
-  const price = sliding ? (width > 4 ? prices.sliding_5 : prices.sliding_3_4) : (width > 4 ? prices.swing_5 : prices.swing_3_4);
+  const statedPrice = explicitExtraPrice(text, /(?:ворот\w*|откатн\w*|распаш\w*)[^\n]{0,36}?(?:по|за)\s*(\d+(?:[.,]\d+)?)\s*(к\.?|тыс(?:\.?|яч)?|₽|руб\.?|р\.)/i);
+  const price = statedPrice || (sliding ? (width > 4 ? prices.sliding_5 : prices.sliding_3_4) : (width > 4 ? prices.swing_5 : prices.swing_3_4));
   return { type: "extra", title: `${kind} ворота ${String(width).replace(".", ",")} м`, quantity: 1, unit: "шт.", price, amount: price, inferred: !gateMentioned };
 }
 
@@ -58,7 +69,8 @@ function wicketLine(text, prices) {
   const separate = /(?:калит[^\n]{0,36}(?:отдельн|двух\s*столб|2\s*столб)|(?:отдельн|двух\s*столб|2\s*столб)[^\n]{0,36}калит)/i.test(text);
   const explicit = text.match(/калит[^\n]{0,24}?\s(?:по|за)\s*(\d+(?:[.,]\d+)?)\s*(к|к\.|тыс|₽|руб\.?|р\.)?/i);
   const raw = explicit ? number(explicit[1]) : null;
-  const price = raw ? (raw < 100 ? raw * 1000 : raw) : (separate ? prices.wicket_separate : prices.wicket_adjacent);
+  const statedPrice = explicitExtraPrice(text, /калит[^\n]{0,24}?(?:\s+(?:по|за))?\s+(\d+(?:[.,]\d+)?)\s*(к\.?|тыс(?:\.?|яч)?|₽|руб\.?|р\.)/i);
+  const price = statedPrice || (raw ? (raw < 100 ? raw * 1000 : raw) : (separate ? prices.wicket_separate : prices.wicket_adjacent));
   return { type: "extra", title: separate ? "Калитка отдельно стоящая (на 2 столбах)" : "Калитка рядом стоящая (на 1 столбе)", quantity: 1, unit: "шт.", price, amount: price, inferred: !/калит/i.test(text) };
 }
 

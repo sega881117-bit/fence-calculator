@@ -4,3 +4,7 @@ compatibility_date = "2026-08-30"
 # Secrets and variables are administered in the Cloudflare dashboard, not Git.
 keep_vars = true
 preview_urls = false
+
+[observability.logs]
+enabled = true
+invocation_logs = true

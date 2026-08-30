@@ -92,9 +92,10 @@ async function getGoogleAccessToken(env) {
 
 async function readPrices(env) {
   const token = await getGoogleAccessToken(env);
-  const spreadsheetId = env.PRICE_SHEET_ID;
-  const range = env.PRICE_SHEET_RANGE;
-  if (!spreadsheetId || !range) throw new Error("price_sheet_settings_missing");
+  // These identifiers are not credentials. Keeping safe fallbacks prevents a
+  // Git deployment from losing a non-secret dashboard variable.
+  const spreadsheetId = env.PRICE_SHEET_ID || "1ru38oT771nNZr4AgbqxxJiYrwtXk7pKbX3izBcyF05Y";
+  const range = env.PRICE_SHEET_RANGE || "Цены!A5:F40";
   const response = await fetch(
     `https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}/values/${encodeURIComponent(range)}`,
     { headers: { authorization: `Bearer ${token}` } },

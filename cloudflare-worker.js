@@ -114,12 +114,12 @@ async function readPrices(env) {
 }
 
 const MATERIALS = [
-  { key: "profile_double", label: "Профлист двухсторонний", test: /двухстор|двустор|двойн/i },
-  { key: "picket_chess", label: "Евроштакетник шахматка", test: /шахмат/i },
+  { key: "profile_double", label: "Профлист двухсторонний", test: /двухстор|двустор|двойн|2\s*сторон|обе\s*сторон/i },
+  { key: "picket_chess", label: "Евроштакетник шахматка", test: /шахмат|в\s*два\s*ряд|вразбеж/i },
   { key: "mesh3d", label: "3D-сетка", test: /(?:3\s*[dд]|гиттер)/i },
   { key: "chainlink", label: "Сетка-рабица", test: /рабиц/i },
-  { key: "picket_single", label: "Евроштакетник один ряд", test: /(?:штакет|евроштак)/i },
-  { key: "profile_single", label: "Профлист односторонний", test: /(?:проф(?:лист|настил)?|профилист|сплошн)/i },
+  { key: "picket_single", label: "Евроштакетник один ряд", test: /(?:штакет|штает|евроштак)/i },
+  { key: "profile_single", label: "Профлист односторонний", test: /(?:проф(?:лист|настил)?|профилист|проф\.|профиль|лист|сплошн|глух)/i },
 ];
 const num = (value) => Number(String(value).replace(",", "."));
 const formatHeight = (value) => String(value).replace(".", ",");
@@ -135,12 +135,12 @@ function heightIn(text, fallback = 2) {
 }
 
 function explicitAmount(value, suffix) {
-  const amount = num(value);
+  const amount = num(String(value).replace(/[ \u00a0]/g, ""));
   return /^(?:к|к\.|тыс)/i.test(String(suffix || "")) ? amount * 1000 : amount;
 }
 
 function explicitRate(text) {
-  const match = String(text).match(/по\s*(\d+(?:[.,]\d+)?)\s*(к\.?|тыс(?:\.?|яч)?|₽|руб\.?|р\.?)?/i);
+  const match = String(text).match(/по\s*(\d+(?:[ \u00a0]\d{3})*(?:[.,]\d+)?)\s*(к\.?|тыс(?:\.?|яч)?|₽|руб\.?|р\.?)?/i);
   return match ? explicitAmount(match[1], match[2]) : null;
 }
 
@@ -149,10 +149,29 @@ function explicitExtraPrice(text, pattern) {
   return match ? explicitAmount(match[1], match[2]) : null;
 }
 
-function materialIn(text) { return MATERIALS.find((material) => material.test.test(text)) || MATERIALS.at(-1); }
+function materialIn(text) {
+  const value = String(text || "");
+  // Сначала учитываем явно названный материал, затем его покрытие.
+  // Поэтому «штакетник в два ряда» остаётся шахматкой, а не профлистом.
+  if (MATERIALS[1].test.test(value)) return MATERIALS[1];
+  if (MATERIALS[2].test.test(value)) return MATERIALS[2];
+  if (MATERIALS[3].test.test(value)) return MATERIALS[3];
+  if (MATERIALS[4].test.test(value)) return MATERIALS[4];
+  if (MATERIALS[0].test.test(value)) return MATERIALS[0];
+  return MATERIALS[5];
+}
+
+function explicitPositionPrice(text, label) {
+  const suffix = "(к\\.?|тыс(?:\\.?|яч)?|₽|руб\\.?|р\\.?)";
+  const amount = "(\\d+(?:[ \\u00a0]\\d{3})*(?:[.,]\\d+)?)";
+  const rawAfterPreposition = new RegExp(`${label}[^\\n]{0,36}?(?:по|за)\\s*${amount}\\s*${suffix}?`, "i");
+  const shorthandAfterLabel = new RegExp(`${label}[^\\n]{0,36}?\\s${amount}\\s*${suffix}`, "i");
+  const match = String(text).match(rawAfterPreposition) || String(text).match(shorthandAfterLabel);
+  return match ? explicitAmount(match[1], match[2]) : null;
+}
 
 function fenceLine(line, prices) {
-  if (/(?:ворот|калит|достав|удлин|откатн|распаш|в\s*сторону)/i.test(line)) return null;
+  if (/(?:ворот|калит|достав|удлин|откатн|сдвижн|распаш|створк|в\s*сторону)/i.test(line)) return null;
   const match = String(line).match(/(?:^|\s)(\d+(?:[.,]\d+)?)\s*(?:м\.?|м\.п\.?|метр(?:а|ов)?|х|x|×)?/i);
   if (!match || !(num(match[1]) > 0)) return null;
   const material = materialIn(line);
@@ -217,12 +236,12 @@ function fenceDescription(material, height) {
 }
 
 function gateLine(text, prices) {
-  const gateMentioned = /(?:ворот|откатн|распаш|в\s*сторону)/i.test(text);
-  const sliding = /(?:откатн|в\s*сторону)/i.test(text);
+  const gateMentioned = /(?:ворот|откатн|сдвижн|распаш|створк|в\s*сторону)/i.test(text);
+  const sliding = /(?:откатн|сдвижн|в\s*сторону)/i.test(text);
   const match = String(text).match(/(?:ворот\w*|откатн\w*|распаш\w*)[^\n]{0,28}?(3(?:[.,]5)?|4|5)\s*(?:м\.?|метр)/i);
   const width = match ? num(match[1]) : 4;
   if (width > 5 || width < 3) throw new Error("Ворота шире 5 м или уже 3 м требуют ручной проверки.");
-  const statedPrice = explicitExtraPrice(text, /(?:ворот\w*|откатн\w*|распаш\w*)[^\n]{0,36}?(?:по|за)\s*(\d+(?:[.,]\d+)?)\s*(к\.?|тыс(?:\.?|яч)?|₽|руб\.?|р\.?)/i);
+  const statedPrice = explicitPositionPrice(text, "(?:ворот\\w*|откатн\\w*|сдвижн\\w*|распаш\\w*|створк\\w*)");
   const price = statedPrice || (sliding ? (width > 4 ? prices.sliding_5 : prices.sliding_3_4) : (width > 4 ? prices.swing_5 : prices.swing_3_4));
   const height = heightIn(text);
   return {
@@ -247,7 +266,7 @@ function gateLine(text, prices) {
 
 function wicketLine(text, prices) {
   const separate = /(?:калит[^\n]{0,36}(?:отдельн|двух\s*столб|2\s*столб)|(?:отдельн|двух\s*столб|2\s*столб)[^\n]{0,36}калит)/i.test(text);
-  const statedPrice = explicitExtraPrice(text, /калит[^\n]{0,24}?(?:\s+(?:по|за))?\s+(\d+(?:[.,]\d+)?)\s*(к\.?|тыс(?:\.?|яч)?|₽|руб\.?|р\.)/i);
+  const statedPrice = explicitPositionPrice(text, "калит");
   const price = statedPrice || (separate ? prices.wicket_separate : prices.wicket_adjacent);
   const height = heightIn(text);
   return {

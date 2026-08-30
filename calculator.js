@@ -54,6 +54,10 @@ function explicitPositionPrice(text, label) {
   return match ? explicitAmount(match[1], match[2]) : null;
 }
 
+function hasGateMention(text) {
+  return /(?:ворот|откатн|сдвижн|распаш|створк|в\s*сторону|(?:^|\s)в\s*(?:\+\s*)?к(?=\s|$))/im.test(String(text));
+}
+
 function fenceLine(line, prices) {
   // «Итого 300», «всего 250 000» — это комментарий к цене, а не новый участок.
   if (/^\s*(?:итого|всего|общ(?:ая|ий)\s+сумм)/i.test(line)) return null;
@@ -72,7 +76,7 @@ function fenceLine(line, prices) {
 
 function gateLine(text, prices) {
   const sliding = /(?:откатн|сдвижн|в\s*сторону)/i.test(text);
-  const gateMentioned = /(?:ворот|откатн|сдвижн|распаш|створк|в\s*сторону)/i.test(text);
+  const gateMentioned = hasGateMention(text);
   // Явно названа только калитка — ворота не предполагаем.
   if (!gateMentioned && /калит/i.test(text)) return null;
   const match = text.match(/(?:ворот\w*|откатн\w*|распаш\w*)[^\n]{0,28}?(3(?:[.,]5)?|4|5)\s*(?:м\.?|метр)/i);
@@ -85,7 +89,7 @@ function gateLine(text, prices) {
 }
 
 function wicketLine(text, prices) {
-  const gateMentioned = /(?:ворот|откатн|сдвижн|распаш|створк|в\s*сторону)/i.test(text);
+  const gateMentioned = hasGateMention(text);
   const separate = !gateMentioned || /(?:калит[^\n]{0,36}(?:отдельн|двух\s*столб|2\s*столб)|(?:отдельн|двух\s*столб|2\s*столб)[^\n]{0,36}калит)/i.test(text);
   const explicit = text.match(/калит[^\n]{0,24}?\s(?:по|за)\s*(\d+(?:[.,]\d+)?)\s*(к|к\.|тыс|₽|руб\.?|р\.)?/i);
   const raw = explicit ? number(explicit[1]) : null;

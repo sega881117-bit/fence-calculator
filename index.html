@@ -1,0 +1,32 @@
+<!doctype html>
+<html lang="ru">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>Смета на забор</title>
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <main class="shell">
+      <header>
+        <p class="eyebrow">Помощник amoCRM</p>
+        <h1>Смета на устройство забора</h1>
+        <p class="subtle">Работает в браузере, без n8n. Цены загружаются из открытого прайс‑файла или из контрольной копии.</p>
+      </header>
+
+      <section class="card">
+        <label for="request">Что нужно подготовить?</label>
+        <textarea id="request" rows="7" placeholder="Например:&#10;60 м евроштакетник один ряд, 1,8 м&#10;40 м профлист двухсторонний, 2 м&#10;Откатные ворота 5 м, калитка отдельно&#10;Истра"></textarea>
+        <div class="actions">
+          <button id="calculate" type="button">Собрать смету</button>
+          <button id="open-pdf" class="secondary" type="button" disabled>Открыть PDF</button>
+        </div>
+        <p id="source" class="source" aria-live="polite"></p>
+      </section>
+
+      <section id="result" class="quote" hidden aria-live="polite"></section>
+    </main>
+    <script src="./config.js"></script>
+    <script type="module" src="./app.js"></script>
+  </body>
+</html>

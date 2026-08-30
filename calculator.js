@@ -121,6 +121,16 @@ function applyTargetTotal(fences, fixedLines, targetTotal, length) {
   }
 }
 
+function quoteTitle(length, fixedLines) {
+  const hasGate = fixedLines.some((line) => line.type === "extra" && /(?:ворот|откатн)/i.test(line.title));
+  const hasWicket = fixedLines.some((line) => /калит/i.test(line.title));
+  const suffix = hasGate && hasWicket
+    ? ", включая каркасы ворот и калитки"
+    : hasGate ? ", включая каркасы ворот"
+      : hasWicket ? ", включая каркасы калитки" : "";
+  return `Строительство забора ${length} м под ключ${suffix}`;
+}
+
 export function calculate(request, prices) {
   const text = String(request ?? "").trim();
   if (!text) throw new Error("Введите параметры забора.");
@@ -140,7 +150,7 @@ export function calculate(request, prices) {
   applyTargetTotal(fences, fixedLines, targetTotalIn(text), length);
   const linesOut = [...fences, ...fixedLines];
   const total = linesOut.reduce((sum, line) => sum + line.amount, 0);
-  return { title: `Строительство забора ${length} м под ключ`, length, lines: linesOut, total, priceVersion: prices.version };
+  return { title: quoteTitle(length, fixedLines), length, lines: linesOut, total, priceVersion: prices.version };
 }
 
 export { rub };

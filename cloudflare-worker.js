@@ -315,6 +315,16 @@ function applyTargetTotal(fences, fixedLines, targetTotal, length) {
   }
 }
 
+function quoteTitle(length, fixedLines) {
+  const hasGate = fixedLines.some((item) => item.type === "extra" && /(?:ворот|откатн)/i.test(item.title));
+  const hasWicket = fixedLines.some((item) => /калит/i.test(item.title));
+  const suffix = hasGate && hasWicket
+    ? ", включая каркасы ворот и калитки"
+    : hasGate ? ", включая каркасы ворот"
+      : hasWicket ? ", включая каркасы калитки" : "";
+  return `Строительство забора ${length} м под ключ${suffix}`;
+}
+
 function buildQuote(request, prices) {
   const text = String(request || "").trim();
   if (!text) throw new Error("Введите параметры забора.");
@@ -330,7 +340,7 @@ function buildQuote(request, prices) {
   fixedLines.push(deliveryLine(text, length, prices));
   applyTargetTotal(fences, fixedLines, targetTotalIn(text), length);
   const lines = [...fences, ...fixedLines];
-  return { title: `Строительство забора ${length} м под ключ`, length, lines, total: lines.reduce((sum, item) => sum + item.amount, 0), priceVersion: prices.version, priceSource: prices.source };
+  return { title: quoteTitle(length, fixedLines), length, lines, total: lines.reduce((sum, item) => sum + item.amount, 0), priceVersion: prices.version, priceSource: prices.source };
 }
 
 function allowedAmoLeadIds(env) {

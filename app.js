@@ -1,4 +1,4 @@
-import { calculate, rub } from "./calculator.js";
+import { rub } from "./calculator.js";
 
 const request = document.querySelector("#request");
 const calculateButton = document.querySelector("#calculate");
@@ -7,17 +7,16 @@ const result = document.querySelector("#result");
 const source = document.querySelector("#source");
 let quote = null;
 
-async function prices() {
-  if (window.FENCE_PRICE_API_URL) {
-    const response = await fetch(window.FENCE_PRICE_API_URL, { cache: "no-store" });
-    if (!response.ok) throw new Error("Прайс временно недоступен. Смета не сформирована.");
-    const live = await response.json();
-    source.textContent = `Прайс: ${live.source || "Цены для Авито"} · версия ${live.version}`;
-    return live;
-  }
-  const local = await fetch("./prices.json", { cache: "no-store" }).then((response) => response.json());
-  source.textContent = `Прайс: ${local.version} · контрольная копия (не для боевой отправки)`;
-  return local;
+async function draft(request) {
+  const response = await fetch(window.FENCE_DRAFT_API_URL, {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ mode: "draft_only", request })
+  });
+  const result = await response.json().catch(() => ({}));
+  if (!response.ok || !result.valid || !result.quote) throw new Error(result.message || "Прайс временно недоступен. Смета не сформирована.");
+  source.textContent = `Прайс: ${result.quote.priceSource || "Цены для Авито"} · версия ${result.quote.priceVersion}`;
+  return result.quote;
 }
 
 function render(current) {
@@ -30,8 +29,7 @@ function render(current) {
 calculateButton.addEventListener("click", async () => {
   try {
     calculateButton.disabled = true;
-    const priceList = await prices();
-    quote = calculate(request.value, priceList);
+    quote = await draft(request.value);
     render(quote);
   } catch (error) {
     result.hidden = false;

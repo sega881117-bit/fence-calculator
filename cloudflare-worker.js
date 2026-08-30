@@ -111,10 +111,102 @@ async function readPrices(env) {
   return { version: new Date().toISOString().slice(0, 10), source: "Цены для Авито", ...prices };
 }
 
+const MATERIALS = [
+  { key: "profile_double", label: "Профлист двухсторонний", test: /двухстор|двустор/i },
+  { key: "picket_chess", label: "Евроштакетник шахматка", test: /шахмат/i },
+  { key: "mesh3d", label: "3D-сетка", test: /(?:3\s*[dд]|гиттер)/i },
+  { key: "chainlink", label: "Сетка-рабица", test: /рабиц/i },
+  { key: "picket_single", label: "Евроштакетник один ряд", test: /(?:штакет|евроштак)/i },
+  { key: "profile_single", label: "Профлист односторонний", test: /(?:проф(?:лист|настил)?|профилист|сплошн)/i },
+];
+const num = (value) => Number(String(value).replace(",", "."));
+const formatHeight = (value) => String(value).replace(".", ",");
+
+function heightIn(text, fallback = 2) {
+  const matches = [...String(text).matchAll(/(?:h\s*=\s*|высот[аы]?\s*)?(\d{1,4}(?:[,.]\d+)?)\s*(?:мм|м\.?|метр)/gi)];
+  for (const match of matches) {
+    const value = num(match[1]);
+    if (value >= 1.6 && value <= 2.1) return value;
+    if (value >= 1600 && value <= 2100) return value / 1000;
+  }
+  return fallback;
+}
+
+function explicitRate(text) {
+  const match = String(text).match(/по\s*(\d{3,5})(?:\s*(?:₽|руб\.?|р\.?))?/i);
+  return match ? num(match[1]) : null;
+}
+
+function materialIn(text) { return MATERIALS.find((material) => material.test.test(text)) || MATERIALS.at(-1); }
+
+function fenceLine(line, prices) {
+  if (/(?:ворот|калит|достав|удлин|откатн|распаш|в\s*сторону)/i.test(line)) return null;
+  const match = String(line).match(/(?:^|\s)(\d+(?:[.,]\d+)?)\s*(?:м\.?|м\.п\.?|метр(?:а|ов)?|х|x|×)?/i);
+  if (!match || !(num(match[1]) > 0)) return null;
+  const material = materialIn(line);
+  const height = heightIn(line);
+  const heightKey = Math.abs(height - 1.8) < 0.01 ? "1_8" : Math.abs(height - 1.7) < 0.01 ? "1_7" : Math.abs(height - 2) < 0.01 ? "2_0" : null;
+  const price = explicitRate(line) || prices[`${material.key}_${heightKey}`];
+  if (!Number.isFinite(price)) throw new Error(`Нет утверждённой цены: ${material.label}, высота ${height} м.`);
+  return { type: "fence", title: `${material.label}, высота ${formatHeight(height)} м`, quantity: num(match[1]), unit: "м.п.", price, amount: num(match[1]) * price };
+}
+
+function gateLine(text, prices) {
+  const gateMentioned = /(?:ворот|откатн|распаш|в\s*сторону)/i.test(text);
+  const sliding = /(?:откатн|в\s*сторону)/i.test(text);
+  const match = String(text).match(/(?:ворот\w*|откатн\w*|распаш\w*)[^\n]{0,28}?(3(?:[.,]5)?|4|5)\s*(?:м\.?|метр)/i);
+  const width = match ? num(match[1]) : 4;
+  if (width > 5 || width < 3) throw new Error("Ворота шире 5 м или уже 3 м требуют ручной проверки.");
+  const price = sliding ? (width > 4 ? prices.sliding_5 : prices.sliding_3_4) : (width > 4 ? prices.swing_5 : prices.swing_3_4);
+  return { type: "extra", title: `${sliding ? "Откатные" : "Распашные"} ворота ${formatHeight(width)} м`, quantity: 1, unit: "шт.", price, amount: price, inferred: !gateMentioned };
+}
+
+function wicketLine(text, prices) {
+  const separate = /(?:калит[^\n]{0,36}(?:отдельн|двух\s*столб|2\s*столб)|(?:отдельн|двух\s*столб|2\s*столб)[^\n]{0,36}калит)/i.test(text);
+  const explicit = String(text).match(/калит[^\n]{0,24}?\s(?:по|за)\s*(\d+(?:[.,]\d+)?)\s*(к|к\.|тыс|₽|руб\.?|р\.)?/i);
+  const raw = explicit ? num(explicit[1]) : null;
+  const price = raw ? (raw < 100 ? raw * 1000 : raw) : (separate ? prices.wicket_separate : prices.wicket_adjacent);
+  return { type: "extra", title: separate ? "Калитка отдельно стоящая (на 2 столбах)" : "Калитка рядом стоящая (на 1 столбе)", quantity: 1, unit: "шт.", price, amount: price };
+}
+
+function deliveryLine(text, length, prices) {
+  const match = String(text).match(/достав[^\n\d]{0,20}(\d+(?:[.,]\d+)?)\s*(к|тыс|₽|руб\.?|р\.)?/i);
+  const raw = match ? num(match[1]) : null;
+  const price = raw ? (raw < 100 ? raw * 1000 : raw) : (length <= 60 ? prices.delivery_0_60 : length <= 120 ? prices.delivery_61_120 : prices.delivery_121_plus);
+  return { type: "delivery", title: "Доставка", quantity: 1, unit: "рейс", price, amount: price };
+}
+
+function buildQuote(request, prices) {
+  const text = String(request || "").trim();
+  if (!text) throw new Error("Введите параметры забора.");
+  const fences = text.split(/\r?\n/).map((line) => fenceLine(line.trim(), prices)).filter(Boolean);
+  if (!fences.length) {
+    const match = text.match(/(?:^|\s)(\d+(?:[.,]\d+)?)\s*(?:м\.?|метр(?:а|ов)?)/i);
+    if (!match) throw new Error("Не удалось определить длину забора.");
+    fences.push(fenceLine(`${match[1]} м профлист`, prices));
+  }
+  const length = fences.reduce((sum, item) => sum + item.quantity, 0);
+  const lines = [...fences, gateLine(text, prices), wicketLine(text, prices), deliveryLine(text, length, prices)];
+  if (/удлин[а-яё]*\s+столб/i.test(text) && /1[,.]5/.test(text)) lines.splice(-1, 0, { type: "extra", title: "Удлинение столбов до 1,5 м", quantity: length, unit: "м.п.", price: prices.post_extension_per_m, amount: length * prices.post_extension_per_m });
+  return { title: `Строительство забора ${length} м под ключ`, length, lines, total: lines.reduce((sum, item) => sum + item.amount, 0), priceVersion: prices.version, priceSource: prices.source };
+}
+
 export default {
   async fetch(request, env) {
     const url = new URL(request.url);
     const origin = request.headers.get("origin");
+    if (url.pathname === "/v1/drafts") {
+      if (request.method === "OPTIONS") return new Response(null, { status: 204, headers: headers(origin, env) });
+      if (request.method !== "POST" || !isAllowedOrigin(origin, env)) return json({ error: "not_allowed" }, origin, env, 403);
+      try {
+        const body = await request.json();
+        if (body?.mode !== "draft_only" || typeof body.request !== "string" || body.request.length > 1000) return json({ error: "invalid_request" }, origin, env, 400);
+        const quote = buildQuote(body.request, await readPrices(env));
+        return json({ valid: true, action: "cloudflare_quote", quote }, origin, env);
+      } catch (error) {
+        return json({ valid: false, error: "calculation_failed", message: error instanceof Error ? error.message : "Расчёт не выполнен." }, origin, env, 422);
+      }
+    }
     if (url.pathname !== "/v1/prices") return json({ error: "not_found" }, origin, env, 404);
     if (request.method === "OPTIONS") return new Response(null, { status: 204, headers: headers(origin, env) });
     if (request.method !== "GET" || !isAllowedOrigin(origin, env)) return json({ error: "not_allowed" }, origin, env, 403);

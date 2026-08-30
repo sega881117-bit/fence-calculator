@@ -276,10 +276,86 @@ function buildQuote(request, prices) {
   return { title: `Строительство забора ${length} м под ключ`, length, lines, total: lines.reduce((sum, item) => sum + item.amount, 0), priceVersion: prices.version, priceSource: prices.source };
 }
 
+function allowedAmoLeadIds(env) {
+  // Пока идёт приёмка, нельзя прикрепить файл к боевой сделке даже при
+  // случайном нажатии кнопки в виджете. Для запуска понадобится явно
+  // заменить эту переменную в Cloudflare и отдельно подтвердить включение.
+  const configured = String(env.AMOCRM_ALLOWED_LEAD_IDS || "36413089")
+    .split(",")
+    .map((value) => Number(value.trim()))
+    .filter((value) => Number.isInteger(value) && value > 0);
+  return new Set(configured);
+}
+
+function pdfBytesFromBase64(value) {
+  if (typeof value !== "string" || value.length < 16 || value.length > 11_000_000) {
+    throw new Error("invalid_pdf_payload");
+  }
+  const base64 = value.replace(/^data:application\/pdf;base64,/i, "");
+  const binary = atob(base64);
+  const bytes = Uint8Array.from(binary, (character) => character.charCodeAt(0));
+  if (bytes.length < 64 || bytes.length > 8_000_000 || new TextDecoder().decode(bytes.slice(0, 5)) !== "%PDF-") {
+    throw new Error("invalid_pdf_file");
+  }
+  return bytes;
+}
+
+async function attachPdfToAmo({ leadId, pdfBytes, fileName }, env) {
+  if (!env.AMOCRM_ACCESS_TOKEN) throw new Error("amocrm_token_missing");
+  const amoBase = String(env.AMOCRM_BASE_URL || "https://sega171188.amocrm.ru").replace(/\/$/, "");
+  const auth = { authorization: `Bearer ${env.AMOCRM_ACCESS_TOKEN}` };
+  const account = await fetch(`${amoBase}/api/v4/account?with=drive_url`, { headers: auth });
+  if (!account.ok) throw new Error(`amocrm_account_${account.status}`);
+  const driveUrl = (await account.json()).drive_url;
+  if (!driveUrl) throw new Error("amocrm_drive_url_missing");
+  const session = await fetch(`${driveUrl}/v1.0/sessions`, {
+    method: "POST",
+    headers: { ...auth, "content-type": "application/json" },
+    body: JSON.stringify({ file_name: fileName, file_size: pdfBytes.length, content_type: "application/pdf" }),
+  });
+  if (!session.ok) throw new Error(`amocrm_upload_session_${session.status}`);
+  const sessionData = await session.json();
+  if (!sessionData.upload_url) throw new Error("amocrm_upload_url_missing");
+  const upload = await fetch(sessionData.upload_url, {
+    method: "POST",
+    headers: { "content-type": "application/pdf" },
+    body: pdfBytes,
+  });
+  if (!upload.ok) throw new Error(`amocrm_upload_${upload.status}`);
+  const uploaded = await upload.json();
+  const uuid = uploaded.uuid || uploaded.file_uuid;
+  if (!uuid) throw new Error("amocrm_file_uuid_missing");
+  const attach = await fetch(`${amoBase}/api/v4/leads/${leadId}/files`, {
+    method: "PUT",
+    headers: { ...auth, "content-type": "application/json" },
+    body: JSON.stringify([{ file_uuid: uuid }]),
+  });
+  if (!attach.ok) throw new Error(`amocrm_attach_${attach.status}`);
+  return { uuid };
+}
+
 export default {
   async fetch(request, env) {
     const url = new URL(request.url);
     const origin = request.headers.get("origin");
+    if (url.pathname === "/v1/amo/attach-pdf") {
+      if (request.method === "OPTIONS") return new Response(null, { status: 204, headers: headers(origin, env) });
+      if (request.method !== "POST" || !isAllowedOrigin(origin, env)) return json({ error: "not_allowed" }, origin, env, 403);
+      try {
+        const body = await request.json();
+        const leadId = Number(body?.lead_id);
+        if (!Number.isInteger(leadId) || !allowedAmoLeadIds(env).has(leadId)) {
+          return json({ ok: false, error: "lead_not_allowed" }, origin, env, 403);
+        }
+        const pdfBytes = pdfBytesFromBase64(body?.pdf_base64);
+        const fileName = `Смета_${leadId}_${new Date().toISOString().slice(0, 10)}.pdf`;
+        const uploaded = await attachPdfToAmo({ leadId, pdfBytes, fileName }, env);
+        return json({ ok: true, attached: true, file_uuid: uploaded.uuid }, origin, env);
+      } catch (error) {
+        console.error("amo pdf attach failed", error instanceof Error ? error.message : String(error));
+        return json({ ok: false, error: "attach_failed" }, origin, env, 502);
+      }
+    }
     if (url.pathname === "/v1/drafts") {
       if (request.method === "OPTIONS") return new Response(null, { status: 204, headers: headers(origin, env) });
       if (request.method !== "POST" || !isAllowedOrigin(origin, env)) return json({ error: "not_allowed" }, origin, env, 403);

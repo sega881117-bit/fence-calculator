@@ -119,7 +119,10 @@ export default {
     if (request.method !== "GET" || !isAllowedOrigin(origin, env)) return json({ error: "not_allowed" }, origin, env, 403);
     try {
       return json(await readPrices(env), origin, env);
-    } catch {
+    } catch (error) {
+      // The browser receives only a neutral message; the technical reason is
+      // retained in Cloudflare logs for safe diagnostics.
+      console.error("fence-prices read failed", error instanceof Error ? error.message : String(error));
       return json({ error: "price_source_unavailable", message: "Прайс временно недоступен. Расчёт не выполнен." }, origin, env, 503);
     }
   },

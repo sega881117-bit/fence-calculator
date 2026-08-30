@@ -269,7 +269,8 @@ function gateLine(text, prices) {
 }
 
 function wicketLine(text, prices) {
-  const separate = /(?:калит[^\n]{0,36}(?:отдельн|двух\s*столб|2\s*столб)|(?:отдельн|двух\s*столб|2\s*столб)[^\n]{0,36}калит)/i.test(text);
+  const gateMentioned = /(?:ворот|откатн|сдвижн|распаш|створк|в\s*сторону)/i.test(text);
+  const separate = !gateMentioned || /(?:калит[^\n]{0,36}(?:отдельн|двух\s*столб|2\s*столб)|(?:отдельн|двух\s*столб|2\s*столб)[^\n]{0,36}калит)/i.test(text);
   const statedPrice = explicitPositionPrice(text, "калит");
   const price = statedPrice || (separate ? prices.wicket_separate : prices.wicket_adjacent);
   const height = heightIn(text);

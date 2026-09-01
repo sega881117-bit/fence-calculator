@@ -7,7 +7,11 @@
 const GOOGLE_TOKEN_URL = "https://oauth2.googleapis.com/token";
 const GOOGLE_SHEETS_SCOPE = "https://www.googleapis.com/auth/spreadsheets.readonly";
 const DEFAULT_ORIGIN = "https://sega881117-bit.github.io";
-const DEFAULT_ALLOWED_ORIGINS = ["https://sega881117-bit.github.io", "https://sega171188.amocrm.ru"];
+const DEFAULT_ALLOWED_ORIGINS = [
+  "https://sega881117-bit.github.io",
+  "https://sega171188.amocrm.ru",
+  "https://test8812.amocrm.ru",
+];
 
 let tokenCache;
 

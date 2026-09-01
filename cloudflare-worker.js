@@ -308,7 +308,7 @@ function targetTotalIn(text) {
   if (!match) return null;
   const raw = num(String(match[1]).replace(/[ \u00a0]/g, ""));
   if (!Number.isFinite(raw) || raw <= 0) return null;
-  return match[2] || raw >= 1000 ? raw : raw * 1000;
+  return match[2] ? explicitAmount(match[1], match[2]) : raw >= 1000 ? raw : raw * 1000;
 }
 
 function applyTargetTotal(fences, fixedLines, targetTotal, length) {

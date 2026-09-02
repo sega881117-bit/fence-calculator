@@ -1,0 +1,27 @@
+<section class="fence-assistant" data-fence-assistant>
+  <header class="fence-assistant__header">
+    <div class="fence-assistant__mark" aria-hidden="true"><span></span><span></span><span></span></div>
+    <div>
+      <h2>Помощник по расчёту</h2>
+      <p>Работает только с черновиками</p>
+    </div>
+    <span class="fence-assistant__lock">Тест</span>
+  </header>
+
+  <div class="fence-assistant__lead" aria-live="polite">
+    <span>Сделка</span>
+    <strong data-lead-name>Загрузка…</strong>
+  </div>
+
+  <label class="fence-assistant__label" for="fence-assistant-request">Что нужно подготовить?</label>
+  <textarea id="fence-assistant-request" class="fence-assistant__input" rows="4" maxlength="1000" placeholder="Например: 60 м евроштакетника, 1,8 м, распашные ворота и калитка, Домодедово"></textarea>
+  <p class="fence-assistant__hint">Примеры: 37 м 1,8 по 2000 · распашные 20к · доставка 6к</p>
+
+  <div class="fence-assistant__actions">
+    <button class="fence-assistant__button" type="button" data-draft>Собрать черновик</button>
+    <button class="fence-assistant__text-button" type="button" data-clear>Очистить</button>
+  </div>
+
+  <section class="fence-assistant__result" data-result hidden aria-live="polite"></section>
+  <p class="fence-assistant__safety"><span aria-hidden="true">●</span> Не отправляет сообщения и не изменяет сделку</p>
+</section>

@@ -1,0 +1,19 @@
+# Локальная конфигурация и секреты
+.env
+.env.*
+!.env.example
+config.local.js
+
+# Зависимости и сборочные артефакты
+node_modules/
+.next/
+dist/
+coverage/
+
+# Локальные ZIP-пакеты и служебные файлы macOS
+fence-assistant-widget-*.zip
+.DS_Store
+
+# Временные выгрузки и проверки
+tmp/
+*.pdf

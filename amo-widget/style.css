@@ -1,0 +1,52 @@
+.fence-assistant {
+  --fa-blue: #0b8fd3;
+  --fa-blue-dark: #086eae;
+  --fa-blue-pale: #f2f9fd;
+  --fa-ink: #203244;
+  --fa-muted: #6b7f91;
+  --fa-line: #d4e6f1;
+  box-sizing: border-box;
+  color: var(--fa-ink);
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  font-size: 13px;
+  line-height: 1.45;
+}
+
+.fence-assistant *, .fence-assistant *::before, .fence-assistant *::after { box-sizing: inherit; }
+.fence-assistant__header { padding: 12px 0 10px; }
+.fence-assistant h2 { margin: 0; color: var(--fa-ink); font-size: 16px; font-weight: 700; line-height: 1.2; }
+.fence-assistant__label { display: block; margin: 2px 0 6px; font-weight: 700; }.fence-assistant__input { width: 100%; resize: vertical; min-height: 84px; border: 1px solid #b9d6e7; border-radius: 8px; padding: 9px 10px; color: var(--fa-ink); background: #fff; font: inherit; outline: none; }.fence-assistant__input:focus { border-color: var(--fa-blue); box-shadow: 0 0 0 3px rgba(11,143,211,.14); }.fence-assistant__input::placeholder { color: #8799a7; }
+.fence-assistant__hint { margin: 6px 0 0; color: var(--fa-muted); font-size: 10px; line-height: 1.35; }
+.fence-assistant__actions { display: flex; align-items: center; gap: 9px; margin: 10px 0 11px; }.fence-assistant__button { cursor: pointer; border: 0; border-radius: 7px; padding: 9px 12px; background: var(--fa-blue); color: #fff; font: inherit; font-weight: 700; transition: background .16s ease, transform .16s ease; }.fence-assistant__button:hover { background: var(--fa-blue-dark); }.fence-assistant__button:active { transform: translateY(1px); }.fence-assistant__button:focus-visible, .fence-assistant__text-button:focus-visible { outline: 3px solid rgba(11,143,211,.3); outline-offset: 2px; }.fence-assistant__button[disabled] { cursor: wait; opacity: .67; }
+.fence-assistant__text-button { cursor: pointer; border: 0; padding: 8px 2px; background: transparent; color: var(--fa-blue-dark); font: inherit; }.fence-assistant__text-button:hover { text-decoration: underline; }
+.fence-assistant__result { margin: 11px 0; padding: 11px; border: 1px solid var(--fa-line); border-radius: 8px; background: var(--fa-blue-pale); }.fence-assistant__result h3 { margin: 0 0 5px; font-size: 12px; }.fence-assistant__result p { margin: 0; }.fence-assistant__result--error { border-color: #afc4d1; background: #f7fafc; }
+.fence-assistant__estimate-lines { margin: 9px 0; }.fence-assistant__estimate-lines div { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 8px; padding: 6px 0; border-bottom: 1px solid rgba(134, 188, 219, .45); }.fence-assistant__estimate-lines dt { min-width: 0; }.fence-assistant__estimate-lines dd { margin: 0; font-weight: 700; white-space: nowrap; }.fence-assistant__estimate-lines .fence-assistant__estimate-total { border-bottom: 0; padding-top: 9px; font-weight: 700; }.fence-assistant__estimate-total dd { color: var(--fa-blue-dark); }
+.fence-assistant__estimate-lines strong { display: block; }.fence-assistant__estimate-lines ul { margin: 5px 0 6px; padding-left: 17px; color: var(--fa-muted); font-size: 11px; }.fence-assistant__estimate-lines li { margin: 2px 0; }.fence-assistant__estimate-lines small { color: var(--fa-muted); }.fence-assistant__estimate-note { margin: 8px 0 !important; color: var(--fa-muted); }.fence-assistant__print-row { margin: 10px 0; }.fence-assistant__secondary-button { cursor: pointer; border: 1px solid #8ec9e8; border-radius: 7px; padding: 8px 10px; color: var(--fa-blue-dark); background: #fff; font: inherit; font-weight: 700; }.fence-assistant__secondary-button:hover { background: #e9f6fd; }.fence-assistant__secondary-button:focus-visible { outline: 3px solid rgba(11,143,211,.3); outline-offset: 2px; }
+.fence-assistant__company-footer { margin: 11px 0; padding: 11px; border: 1px solid var(--fa-line); border-radius: 8px; background: #fff; }.fence-assistant__company-footer h4 { margin: 0 0 6px; color: var(--fa-blue-dark); font-size: 11px; }.fence-assistant__company-footer h4:not(:first-child) { margin-top: 12px; }.fence-assistant__advantages-list { margin: 0; padding: 0; list-style: none; color: var(--fa-muted); font-size: 11px; }.fence-assistant__advantages-list li { display: flex; align-items: flex-start; gap: 6px; margin: 4px 0; }.fence-assistant__advantage-icon { width: 13px; height: 13px; flex: 0 0 13px; margin-top: 1px; stroke: var(--fa-blue); fill: #e5f5fe; stroke-width: 1.3; }.fence-assistant__advantage-icon path { fill: none; stroke-linecap: round; stroke-linejoin: round; stroke-width: 1.7; }.fence-assistant__company-footer p { margin: 3px 0; color: var(--fa-muted); font-size: 11px; }.fence-assistant__company-footer a { color: var(--fa-blue-dark); font-weight: 700; text-decoration: none; text-underline-offset: 2px; }.fence-assistant__company-footer a:hover { text-decoration: underline; }.fence-assistant__contact-links { display: grid; gap: 5px; margin-top: 9px; }.fence-assistant__contact-links a { display: grid; grid-template-columns: 72px minmax(0, 1fr); gap: 7px; align-items: baseline; min-width: 0; }.fence-assistant__contact-links strong { white-space: nowrap; }.fence-assistant__contact-links span { min-width: 0; color: var(--fa-muted); font-size: 10px; font-weight: 400; letter-spacing: -.01em; white-space: nowrap; }
+
+/* Compact print-preview typography: three sizes, two colours, two weights. */
+.fence-assistant__estimate-lines strong { font-weight: 500; }
+.fence-assistant__estimate-lines dd,
+.fence-assistant__estimate-lines .fence-assistant__estimate-total { font-weight: 500; }
+.fence-assistant__estimate-total dd { color: var(--fa-blue); }
+.fence-assistant__detail-list { margin: 5px 0 6px; padding: 0; list-style: none; color: var(--fa-muted); font-size: 11px; }
+.fence-assistant__detail-list li { display: flex; align-items: flex-start; gap: 6px; margin: 2px 0; }
+.fence-assistant__detail-list li::before { content: "–"; width: 9px; height: auto; flex: 0 0 9px; margin-top: 0; border-radius: 0; background: transparent; color: var(--fa-muted); line-height: 1.45; text-align: center; }
+.fence-assistant__company-footer h4 { font-weight: 500; }
+.fence-assistant__company-footer a,
+.fence-assistant__contact-links strong { font-weight: 400; }
+.fence-assistant__contact-links span { color: var(--fa-ink); }
+.fence-assistant__line-marker { width: 9px; height: auto; flex: 0 0 9px; margin-top: 0; border-radius: 0; background: transparent; color: var(--fa-muted); line-height: 1.45; text-align: center; }
+.fence-assistant__line-marker::before { content: "–"; }
+.fence-assistant__advantages-list li { align-items: center; }
+.fence-assistant__company-footer h4,
+.fence-assistant__company-footer .fence-assistant__contact-phone a { font-weight: 700; }
+
+.fence-assistant__print-row { display: flex; flex-wrap: wrap; gap: 7px; }
+.fence-assistant__secondary-button { transition: background .16s ease, border-color .16s ease; }
+.fence-assistant__secondary-button:hover { border-color: var(--fa-blue); }
+.fence-assistant__secondary-button[disabled] { cursor: wait; opacity: .68; }
+.fence-assistant__pdf-status { margin-top: 8px !important; color: var(--fa-blue-dark); }
+.fence-assistant__review-check { margin: 10px 0; padding: 8px 9px; border: 1px solid var(--fa-line); border-radius: 7px; background: #fff; }
+.fence-assistant__review-check h4 { margin: 0 0 3px; color: var(--fa-blue-dark); font-size: 11px; font-weight: 700; }
+.fence-assistant__review-check p { color: var(--fa-ink); font-size: 11px; line-height: 1.4; }

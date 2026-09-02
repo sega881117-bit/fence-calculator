@@ -3,8 +3,8 @@ define(['jquery', 'underscore'], function ($, _) {
 
   // Единый расчётный API в Cloudflare: не зависит от лимита n8n.
   var DRAFT_WEBHOOK_URL = 'https://fence-prices.sega881117.workers.dev/v1/drafts';
-  // Адрес прикрепления PDF задаётся только в приватной рабочей сборке.
-  // В открытом GitHub-исходнике он намеренно отключён.
+  // Адрес прикрепления PDF подставляется только при создании закрытой рабочей сборки.
+  // В исходниках GitHub он намеренно пустой.
   var ADD_PDF_WEBHOOK_URL = '';
   var COMPANY_ADVANTAGES = [
     'Проверяем материал микрометром перед установкой',

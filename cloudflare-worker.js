@@ -129,7 +129,11 @@ const num = (value) => Number(String(value).replace(",", "."));
 const formatHeight = (value) => String(value).replace(".", ",");
 
 function heightIn(text, fallback = 2) {
-  const matches = [...String(text).matchAll(/(?:h\s*=\s*|высот[аы]?\s*)?(\d{1,4}(?:[,.]\d+)?)\s*(?:мм|м\.?|метр)/gi)];
+  const source = String(text);
+  // Короткая запись «131х1.8 штакетник» — второй размер может быть без «м».
+  const dimension = source.match(/\d{1,4}(?:[,.]\d+)?\s*[xх×]\s*(1[,.][78]|2(?:[,.]0)?)/i);
+  if (dimension) return num(dimension[1]);
+  const matches = [...source.matchAll(/(?:h\s*=\s*|высот[аы]?\s*)?(\d{1,4}(?:[,.]\d+)?)\s*(?:мм|м\.?|метр)/gi)];
   for (const match of matches) {
     const value = num(match[1]);
     if (value >= 1.6 && value <= 2.1) return value;
@@ -333,6 +337,40 @@ function quoteTitle(length, fixedLines) {
   return `Строительство забора ${length} м под ключ${suffix}`;
 }
 
+const QUOTE_LAYOUT_VERSION = "fence-estimate-v1";
+
+function escapeHtml(value) {
+  return String(value ?? "").replace(/[&<>'"]/g, (character) => ({
+    "&": "&amp;", "<": "&lt;", ">": "&gt;", "'": "&#39;", '"': "&quot;",
+  }[character]));
+}
+
+function rub(value) {
+  return `${Math.round(Number(value) || 0).toLocaleString("ru-RU")} ₽`;
+}
+
+function quoteDate() {
+  return new Intl.DateTimeFormat("ru-RU", { day: "2-digit", month: "2-digit", year: "numeric" }).format(new Date());
+}
+
+// Единственный контракт дизайна для веб-калькулятора, виджета и будущего
+// рендера Avito. Все каналы получают готовое содержимое одного документа.
+function quoteDocument(quote) {
+  const rows = quote.lines.map((line) => {
+    const details = Array.isArray(line.descriptionLines) && line.descriptionLines.length
+      ? `<ul class="quote-document__details">${line.descriptionLines.map((item) => `<li>${escapeHtml(item)}</li>`).join("")}</ul>`
+      : "";
+    return `<tr><td><strong>${escapeHtml(line.title)}</strong>${details}</td><td>${escapeHtml(line.unit)}</td><td>${escapeHtml(line.quantity)}</td><td>${rub(line.price)}</td><td>${rub(line.amount)}</td></tr>`;
+  }).join("");
+  const html = `<article class="quote-document" data-layout-version="${QUOTE_LAYOUT_VERSION}">
+    <header class="quote-document__header"><p class="quote-document__eyebrow">ПРЕДВАРИТЕЛЬНЫЙ РАСЧЁТ</p><h2>Смета на устройство забора</h2><p class="quote-document__date">от ${quoteDate()}</p></header>
+    <table><thead><tr><th>Работы и материалы</th><th>Ед. изм.</th><th>Кол‑во</th><th>Цена, руб.</th><th>Сумма, руб.</th></tr></thead><tbody>${rows}</tbody><tfoot><tr><th colspan="3">Итого</th><td colspan="2"><span>Включая материалы и работы</span><strong>${rub(quote.total)}</strong></td></tr></tfoot></table>
+    <footer class="quote-document__notice"><strong>Предварительная смета</strong><p>Действует 7 календарных дней. Окончательная стоимость уточняется после выезда на объект.</p></footer>
+  </article>`;
+  const css = `*{box-sizing:border-box}body{margin:0;background:#f4f8fc;color:#112d63;font-family:Arial,sans-serif}.quote-document{width:100%;max-width:1240px;margin:36px auto;border:1px solid #d5e7f9;background:#fff}.quote-document__header{padding:42px 46px 29px;background:#f8fbff;border-bottom:1px solid #d5e7f9}.quote-document__eyebrow{margin:0 0 13px;font-size:19px;font-weight:700;color:#345785}.quote-document h2{margin:0;color:#0c2862;font-size:39px;line-height:1.08}.quote-document__date{margin:16px 0 0;color:#42658f;font-size:20px}.quote-document table{width:100%;border-collapse:collapse;table-layout:fixed}.quote-document th,.quote-document td{border:1px solid #d5e7f9;padding:13px 16px;vertical-align:middle}.quote-document thead th{background:#d7e9fb;color:#0d2a60;text-align:center;font-size:18px;font-weight:700}.quote-document th:first-child,.quote-document td:first-child{width:50.2%;text-align:left}.quote-document th:nth-child(2),.quote-document td:nth-child(2){width:9.8%}.quote-document th:nth-child(3),.quote-document td:nth-child(3){width:9.1%}.quote-document th:nth-child(4),.quote-document td:nth-child(4){width:14.3%}.quote-document th:nth-child(5),.quote-document td:nth-child(5){width:16.6%}.quote-document td:first-child{font-size:20px;line-height:1.27}.quote-document td:first-child strong{font-size:22px;color:#102d64}.quote-document td:not(:first-child){color:#0f2c63;text-align:center;font-size:19px;white-space:nowrap}.quote-document td:last-child{font-weight:700}.quote-document__details{margin:13px 0 3px;padding:0;list-style:none;color:#43658c;font-size:18px;line-height:1.3}.quote-document__details li{margin:3px 0}.quote-document__details li::before{content:'— ';font-weight:700}.quote-document tfoot th,.quote-document tfoot td{border-color:#d5e7f9;background:#d7e9fb;color:#102d64;padding:27px 18px}.quote-document tfoot th{text-align:right;font-size:28px}.quote-document tfoot td{text-align:left;font-size:20px}.quote-document tfoot td span{margin-right:24px;font-weight:400}.quote-document tfoot td strong{font-size:30px;white-space:nowrap}.quote-document__notice{padding:28px 40px 25px;background:#f8fbff;color:#345785}.quote-document__notice strong{display:block;color:#112d63;font-size:22px}.quote-document__notice p{margin:13px 0 0;font-size:18px;line-height:1.35}@media print{body{background:#fff;-webkit-print-color-adjust:exact;print-color-adjust:exact}.quote-document{max-width:none;margin:0}.quote-document__header{padding:22mm 18mm 12mm}.quote-document__eyebrow{font-size:14pt}.quote-document h2{font-size:29pt}.quote-document__date{font-size:14pt}.quote-document thead th{font-size:12pt}.quote-document th,.quote-document td{padding:7pt 8pt}.quote-document td:first-child{font-size:12pt}.quote-document td:first-child strong{font-size:13pt}.quote-document__details{font-size:10.5pt;margin-top:7pt}.quote-document td:not(:first-child){font-size:11.5pt}.quote-document tfoot th{font-size:18pt}.quote-document tfoot td{font-size:12pt}.quote-document tfoot td strong{font-size:20pt}.quote-document__notice{padding:12mm 16mm}.quote-document__notice strong{font-size:15pt}.quote-document__notice p{font-size:12pt}}`;
+  return { layoutVersion: QUOTE_LAYOUT_VERSION, html, css };
+}
+
 function buildQuote(request, prices) {
   const text = String(request || "").trim();
   if (!text) throw new Error("Введите параметры забора.");
@@ -348,7 +386,8 @@ function buildQuote(request, prices) {
   fixedLines.push(deliveryLine(text, length, prices));
   applyTargetTotal(fences, fixedLines, targetTotalIn(text), length);
   const lines = [...fences, ...fixedLines];
-  return { title: quoteTitle(length, fixedLines), length, lines, total: lines.reduce((sum, item) => sum + item.amount, 0), priceVersion: prices.version, priceSource: prices.source };
+  const quote = { title: quoteTitle(length, fixedLines), length, lines, total: lines.reduce((sum, item) => sum + item.amount, 0), priceVersion: prices.version, priceSource: prices.source };
+  return { ...quote, document: quoteDocument(quote) };
 }
 
 function allowedAmoLeadIds(env) {

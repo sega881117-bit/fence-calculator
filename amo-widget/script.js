@@ -83,6 +83,7 @@ define(['jquery', 'underscore'], function ($, _) {
           };
         }),
         total_rub: cloudQuote.total,
+        document: cloudQuote.document || null,
         template_note: '',
         advantages: COMPANY_ADVANTAGES,
         contacts: COMPANY_CONTACTS
@@ -552,6 +553,9 @@ define(['jquery', 'underscore'], function ($, _) {
   }
 
   function quotePrintHtml(quote) {
+    if (quote.document && quote.document.layoutVersion === 'fence-estimate-v1' && quote.document.html && quote.document.css) {
+      return '<!doctype html><html lang="ru"><head><meta charset="utf-8"><title>Смета на устройство забора</title><style>' + quote.document.css + '</style></head><body>' + quote.document.html + '</body></html>';
+    }
     var rows = (quote.line_items || []).map(function (item) {
       var details = item.description_lines && item.description_lines.length
         ? '<ul>' + item.description_lines.map(function (line) { return '<li>' + esc(cleanLine(line)) + '</li>'; }).join('') + '</ul>'

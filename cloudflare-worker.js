@@ -114,6 +114,12 @@ async function readPrices(env) {
     const amount = Number(String(row[3] ?? "").replace(/\s/g, "").replace(",", "."));
     if (key && Number.isFinite(amount) && amount > 0) prices[key] = amount;
   }
+  // Строка допработы должна быть в таблице «Цены для Авито». Пока она не
+  // попала в API-выгрузку, используем согласованную страховку 300 ₽/м.п.,
+  // чтобы не допустить нулевой строки и нулевого итога в смете.
+  if (!Number.isFinite(prices.post_extension_per_m) || prices.post_extension_per_m <= 0) {
+    prices.post_extension_per_m = 300;
+  }
   return { version: new Date().toISOString().slice(0, 10), source: "Цены для Авито", ...prices };
 }
 
@@ -389,7 +395,8 @@ function buildQuote(request, prices) {
   }
   const length = fences.reduce((sum, item) => sum + item.quantity, 0);
   const fixedLines = [gateLine(text, prices), wicketLine(text, prices)].filter(Boolean);
-  if (/удлин[а-яё]*\s+столб/i.test(text) && /1[,.]5/.test(text)) fixedLines.push({ type: "extra", title: "Удлинение столбов до 1,5 м", quantity: length, unit: "м.п.", price: prices.post_extension_per_m, amount: length * prices.post_extension_per_m });
+  const extensionRate = Number(prices.post_extension_per_m) || 300;
+  if (/удлин[а-яё]*\s+столб/i.test(text) && /1[,.]5/.test(text)) fixedLines.push({ type: "extra", title: "Удлинение столбов до 1,5 м", quantity: length, unit: "м.п.", price: extensionRate, amount: length * extensionRate });
   fixedLines.push(deliveryLine(text, length, prices));
   applyTargetTotal(fences, fixedLines, targetTotalIn(text), length);
   const lines = [...fences, ...fixedLines];

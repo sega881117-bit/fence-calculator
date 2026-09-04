@@ -159,7 +159,11 @@ export function calculate(request, prices) {
   const length = fences.reduce((sum, line) => sum + line.quantity, 0);
   const extras = [gateLine(text, prices), wicketLine(text, prices)].filter(Boolean);
   const extension = /удлин[а-яё]*\s+столб/i.test(text) && /1[,.]5/.test(text);
-  if (extension) extras.push({ type: "extra", title: "Удлинение столбов до 1,5 м", quantity: length, unit: "м.п.", price: prices.post_extension_per_m, amount: length * prices.post_extension_per_m });
+  // Цена хранится в «Цены для Авито». Резервное значение — согласованные
+  // 300 ₽/м.п.; оно не даёт сформировать нулевую смету, если строка допработы
+  // временно отсутствует в выгрузке прайса.
+  const extensionRate = Number(prices.post_extension_per_m) || 300;
+  if (extension) extras.push({ type: "extra", title: "Удлинение столбов до 1,5 м", quantity: length, unit: "м.п.", price: extensionRate, amount: length * extensionRate });
   const delivery = deliveryLine(text, length, prices);
   const fixedLines = [...extras, delivery];
   applyTargetTotal(fences, fixedLines, targetTotalIn(text), length);

@@ -94,4 +94,14 @@ for (const shorthand of ["вк", "в+к"]) {
   assert.equal(line(result, /Профлист односторонний|одностороннее/).quantity, 80);
 }
 
+// Страховка на случай, если строка «удлинение» ещё не попала в API-выгрузку
+// Google-таблицы: согласованная цена — 300 ₽/м.п., а не нулевой итог.
+{
+  const pricesWithoutExtension = { ...prices, post_extension_per_m: undefined };
+  const result = calculate("80 м профлист\nоткатные\nкалитка\nудлинение столбов 1,5 м", pricesWithoutExtension);
+  assert.equal(line(result, /Удлинение/).price, 300);
+  assert.equal(line(result, /Удлинение/).amount, 24000);
+  assert.equal(result.total, 282000);
+}
+
 console.log("calculator tests: ok");

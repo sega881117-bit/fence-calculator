@@ -251,8 +251,8 @@ function fenceDescription(material, height) {
 
 function gateLine(text, prices) {
   const gateMentioned = hasGateMention(text);
-  // Явно названа только калитка — ворота не предполагаем.
-  if (!gateMentioned && /калит/i.test(text)) return null;
+  // В ручной смете ворота появляются только когда они названы явно.
+  if (!gateMentioned) return null;
   const sliding = /(?:откатн|сдвижн|в\s*сторону)/i.test(text);
   const match = String(text).match(/(?:ворот\w*|откатн\w*|распаш\w*)[^\n]{0,28}?(3(?:[.,]5)?|4|5)\s*(?:м\.?|метр)/i);
   const width = match ? num(match[1]) : 4;
@@ -282,6 +282,10 @@ function gateLine(text, prices) {
 
 function wicketLine(text, prices) {
   const gateMentioned = hasGateMention(text);
+  const wicketMentioned = /калит/i.test(text);
+  // Калитка входит в стандартный комплект с названными воротами,
+  // но не добавляется к забору без ворот и без явного запроса калитки.
+  if (!gateMentioned && !wicketMentioned) return null;
   const separate = !gateMentioned || /(?:калит[^\n]{0,36}(?:отдельн|двух\s*столб|2\s*столб)|(?:отдельн|двух\s*столб|2\s*столб)[^\n]{0,36}калит)/i.test(text);
   const statedPrice = explicitPositionPrice(text, "калит");
   const price = statedPrice || (separate ? prices.wicket_separate : prices.wicket_adjacent);

@@ -11,7 +11,11 @@ const number = (value) => Number(String(value).replace(",", "."));
 const rub = (value) => new Intl.NumberFormat("ru-RU").format(Math.round(value)) + " ₽";
 
 function heightIn(text, fallback = 2) {
-  const matches = [...String(text).matchAll(/(?:h\s*=\s*|высот[аы]?\s*)?(\d{1,4}(?:[,.]\d+)?)\s*(?:мм|м\.?|метр)/gi)];
+  const source = String(text);
+  // Короткая запись «131х1.8 штакетник» — второй размер может быть без «м».
+  const dimension = source.match(/\d{1,4}(?:[,.]\d+)?\s*[xх×]\s*(1[,.][78]|2(?:[,.]0)?)/i);
+  if (dimension) return number(dimension[1]);
+  const matches = [...source.matchAll(/(?:h\s*=\s*|высот[аы]?\s*)?(\d{1,4}(?:[,.]\d+)?)\s*(?:мм|м\.?|метр)/gi)];
   for (const match of matches) {
     const n = number(match[1]);
     if (n >= 1.6 && n <= 2.1) return n;
@@ -77,8 +81,8 @@ function fenceLine(line, prices) {
 function gateLine(text, prices) {
   const sliding = /(?:откатн|сдвижн|в\s*сторону)/i.test(text);
   const gateMentioned = hasGateMention(text);
-  // Явно названа только калитка — ворота не предполагаем.
-  if (!gateMentioned && /калит/i.test(text)) return null;
+  // В ручной смете ворота появляются только когда они названы явно.
+  if (!gateMentioned) return null;
   const match = text.match(/(?:ворот\w*|откатн\w*|распаш\w*)[^\n]{0,28}?(3(?:[.,]5)?|4|5)\s*(?:м\.?|метр)/i);
   const width = match ? number(match[1]) : 4;
   if (width > 5 || width < 3) throw new Error("Ворота шире 5 м или уже 3 м требуют ручной проверки.");
@@ -90,6 +94,10 @@ function gateLine(text, prices) {
 
 function wicketLine(text, prices) {
   const gateMentioned = hasGateMention(text);
+  const wicketMentioned = /калит/i.test(text);
+  // Калитка входит в стандартный комплект с названными воротами,
+  // но не добавляется к забору без ворот и без явного запроса калитки.
+  if (!gateMentioned && !wicketMentioned) return null;
   const separate = !gateMentioned || /(?:калит[^\n]{0,36}(?:отдельн|двух\s*столб|2\s*столб)|(?:отдельн|двух\s*столб|2\s*столб)[^\n]{0,36}калит)/i.test(text);
   const explicit = text.match(/калит[^\n]{0,24}?\s(?:по|за)\s*(\d+(?:[.,]\d+)?)\s*(к|к\.|тыс|₽|руб\.?|р\.)?/i);
   const raw = explicit ? number(explicit[1]) : null;

@@ -62,6 +62,10 @@ function hasGateMention(text) {
   return /(?:ворот|откатн|сдвижн|распаш|створк|в\s*сторону|(?:^|\s)в\s*(?:\+\s*)?к(?=\s|$))/im.test(String(text));
 }
 
+function hasWicketMention(text) {
+  return /(?:калит|(?:^|\s)в\s*(?:\+\s*)?к(?=\s|$))/im.test(String(text));
+}
+
 function fenceLine(line, prices) {
   // «Итого 300», «всего 250 000» — это комментарий к цене, а не новый участок.
   if (/^\s*(?:итого|всего|общ(?:ая|ий)\s+сумм)/i.test(line)) return null;
@@ -94,10 +98,9 @@ function gateLine(text, prices) {
 
 function wicketLine(text, prices) {
   const gateMentioned = hasGateMention(text);
-  const wicketMentioned = /калит/i.test(text);
-  // Калитка входит в стандартный комплект с названными воротами,
-  // но не добавляется к забору без ворот и без явного запроса калитки.
-  if (!gateMentioned && !wicketMentioned) return null;
+  const wicketMentioned = hasWicketMention(text);
+  // В ручной смете калитка появляется только когда она названа явно.
+  if (!wicketMentioned) return null;
   const separate = !gateMentioned || /(?:калит[^\n]{0,36}(?:отдельн|двух\s*столб|2\s*столб)|(?:отдельн|двух\s*столб|2\s*столб)[^\n]{0,36}калит)/i.test(text);
   const explicit = text.match(/калит[^\n]{0,24}?\s(?:по|за)\s*(\d+(?:[.,]\d+)?)\s*(к|к\.|тыс|₽|руб\.?|р\.)?/i);
   const raw = explicit ? number(explicit[1]) : null;

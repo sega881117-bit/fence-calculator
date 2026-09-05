@@ -184,7 +184,7 @@ define(['jquery', 'underscore'], function ($, _) {
   }
 
   function formatRubles(value) {
-    return new Intl.NumberFormat('ru-RU', { maximumFractionDigits: 0 }).format(Math.round(value)) + ' ₽';
+    return new Intl.NumberFormat('ru-RU', { maximumFractionDigits: 0 }).format(Math.round(value)) + ' руб.';
   }
 
   function formatNumber(value) {

@@ -8,7 +8,7 @@ const MATERIALS = [
 ];
 
 const number = (value) => Number(String(value).replace(",", "."));
-const rub = (value) => new Intl.NumberFormat("ru-RU").format(Math.round(value)) + " ₽";
+const rub = (value) => new Intl.NumberFormat("ru-RU").format(Math.round(value)) + " руб.";
 
 function heightIn(text, fallback = 2) {
   const source = String(text);

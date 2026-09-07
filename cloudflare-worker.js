@@ -176,12 +176,22 @@ function materialIn(text) {
 }
 
 function explicitPositionPrice(text, label) {
-  const suffix = "(к\\.?|тыс(?:\\.?|яч)?|₽|руб\\.?|р\\.?)";
+  const suffix = "(к\\.?|тыс(?:\\.?|яч)?|₽|руб\\.?|р\\.?)(?![а-яёa-z])";
   const amount = "(\\d+(?:[ \\u00a0]\\d{3})*(?:[.,]\\d+)?)";
   const rawAfterPreposition = new RegExp(`${label}[^\\n]{0,36}?(?:по|за)\\s*${amount}\\s*${suffix}?`, "i");
   const shorthandAfterLabel = new RegExp(`${label}[^\\n]{0,36}?\\s${amount}\\s*${suffix}`, "i");
-  const match = String(text).match(rawAfterPreposition) || String(text).match(shorthandAfterLabel);
+  // A following line's «2 калитки» is a count, never a gate price of 2к.
+  const match = String(text).split(/\r?\n|;/).map(line => line.match(rawAfterPreposition) || line.match(shorthandAfterLabel)).find(Boolean);
   return match ? explicitAmount(match[1], match[2]) : null;
+}
+
+function openingCount(text, kind) {
+  const words = {одни:1, один:1, одна:1, одну:1, двое:2, две:2, два:2, три:3, четыре:4};
+  const label = kind === 'gate' ? '(?:(?:распаш[а-яё]*|откат[а-яё]*)\\s+)?ворот[а-яё]*' : 'калит[а-яё]*';
+  const match = String(text).match(new RegExp('(?:^|\\s)(\\d+|одни|один|одна|одну|двое|две|два|три|четыре)\\s*(?:шт\\.?\\s*)?' + label, 'i'));
+  const count = match ? (words[match[1].toLowerCase()] || Number(match[1])) : 1;
+  if (!Number.isInteger(count) || count < 1 || count > 4) throw new Error('Количество ворот/калиток требует ручной проверки.');
+  return count;
 }
 
 function hasGateMention(text) {
@@ -260,6 +270,7 @@ function fenceDescription(material, height) {
 }
 
 function gateLine(text, prices) {
+  const count = openingCount(text, 'gate');
   const gateMentioned = hasGateMention(text);
   // В ручной смете ворота появляются только когда они названы явно.
   if (!gateMentioned) return null;
@@ -286,11 +297,12 @@ function gateLine(text, prices) {
       "2 нижних стопора;",
       "петли 25×120 мм.",
     ],
-    quantity: 1, unit: "шт.", price, amount: price, inferred: !gateMentioned,
+    quantity: count, unit: "шт.", price, amount: price * count, inferred: !gateMentioned,
   };
 }
 
 function wicketLine(text, prices) {
+  const count = openingCount(text, 'wicket');
   const gateMentioned = hasGateMention(text);
   const wicketMentioned = hasWicketMention(text);
   // В ручной смете калитка появляется только когда она названа явно.
@@ -309,7 +321,7 @@ function wicketLine(text, prices) {
       "петли 25×120 мм;",
       "врезной замок в подарок 🎁.",
     ],
-    quantity: 1, unit: "шт.", price, amount: price,
+    quantity: count, unit: "шт.", price, amount: price * count,
   };
 }
 

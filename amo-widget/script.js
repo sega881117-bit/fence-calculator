@@ -25,7 +25,7 @@ define(['jquery', 'underscore'], function ($, _) {
       '<header class="fence-assistant__header"><h2>Помощник</h2></header>' +
       '<label class="fence-assistant__label" for="fence-assistant-request">Что нужно подготовить?</label>' +
       '<textarea id="fence-assistant-request" class="fence-assistant__input" rows="4" maxlength="1000" placeholder="Например: 100 м, 1,8 м, калитка рядом стоящая, доставка 8 000 ₽. Профнастил — по умолчанию."></textarea>' +
-      '<p class="fence-assistant__hint">Примеры: 37 м 1,8 по 2000 · распашные 20к · доставка 6к</p>' +
+      '<p class="fence-assistant__hint">Enter — рассчитать · Shift+Enter — новая строка<br>Примеры: 37 м 1,8 по 2000 · распашные 20к · доставка 6к</p>' +
       '<div class="fence-assistant__actions"><button class="fence-assistant__button" type="button" data-draft>Собрать черновик</button><button class="fence-assistant__text-button" type="button" data-clear>Очистить</button></div>' +
       '<section class="fence-assistant__result" data-result hidden aria-live="polite"></section>' +
     '</section>';
@@ -790,6 +790,13 @@ define(['jquery', 'underscore'], function ($, _) {
         if (!$widget.length || $widget.data('fence-assistant-ready')) return true;
 
         $widget.data('fence-assistant-ready', true);
+          $widget.on('keydown', '#fence-assistant-request', function (event) {
+            if (event.key !== 'Enter' || event.shiftKey || event.isComposing) return;
+            event.preventDefault();
+            var $draftButton = $widget.find('[data-draft]');
+            if (!$draftButton.prop('disabled')) $draftButton.trigger('click');
+          });
+
           $widget.on('click', '[data-clear]', function () {
             $widget.find('#fence-assistant-request').val('').focus();
             $widget.find('[data-result]').prop('hidden', true).empty();

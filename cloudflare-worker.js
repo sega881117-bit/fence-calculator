@@ -188,7 +188,10 @@ function explicitPositionPrice(text, label) {
 function openingCount(text, kind) {
   const words = {одни:1, один:1, одна:1, одну:1, двое:2, две:2, два:2, три:3, четыре:4};
   const label = kind === 'gate' ? '(?:(?:распаш[а-яё]*|откат[а-яё]*)\\s+)?ворот[а-яё]*' : 'калит[а-яё]*';
-  const match = String(text).match(new RegExp('(?:^|\\s)(\\d+|одни|один|одна|одну|двое|две|два|три|четыре)\\s*(?:шт\\.?\\s*)?' + label, 'i'));
+  // Количество относится только к той же строке, что и ворота/калитка.
+  // Иначе «рабица по 1300\nраспашные ворота» ошибочно читается как 1300 ворот.
+  const countPattern = new RegExp('(?:^|\\s)(\\d+|одни|один|одна|одну|двое|две|два|три|четыре)\\s*(?:шт\\.?\\s*)?' + label, 'i');
+  const match = String(text).split(/\r?\n|;/).map((line) => line.match(countPattern)).find(Boolean);
   const count = match ? (words[match[1].toLowerCase()] || Number(match[1])) : 1;
   if (!Number.isInteger(count) || count < 1 || count > 4) throw new Error('Количество ворот/калиток требует ручной проверки.');
   return count;

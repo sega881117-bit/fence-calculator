@@ -16,4 +16,11 @@ assert.equal(explicit.lines[1].price,20000);
 assert.equal(explicit.total,177000);
 const ordinary=buildQuote('50 м профлист\nраспашные ворота\nкалитка',prices);
 assert.equal(ordinary.total,141000);
+const chainlink=buildQuote('70х2 рабица по 1300\nРаспашные ворота 16к\nДоставка 7к',prices);
+assert.equal(chainlink.total,114000);
+assert.deepEqual(chainlink.lines.map(x=>[x.title,x.quantity,x.price,x.amount]),[
+  [chainlink.lines[0].title,70,1300,91000],
+  [chainlink.lines[1].title,1,16000,16000],
+  [chainlink.lines[2].title,1,7000,7000],
+]);
 console.log('PASS: Worker counts, price boundaries, explicit unit price, ordinary quote');

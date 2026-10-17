@@ -6,7 +6,7 @@ const prices = {
   profile_double_1_8: 2150, profile_double_2_0: 2400,
   picket_single_1_8: 2150, picket_single_2_0: 2300,
   picket_chess_1_8: 3600, picket_chess_2_0: 3900,
-  mesh3d_1_7: 2000, mesh3d_2_0: 2100,
+  mesh3d_1_7: 1900, mesh3d_2_0: 2000,
   chainlink_1_8: 1000, chainlink_2_0: 1100,
   swing_3_4: 17000, swing_5: 23000,
   sliding_3_4: 69000, sliding_5: 75000,
@@ -19,6 +19,17 @@ const prices = {
 const quote = (lines) => calculate(lines.join("\n"), prices);
 const titles = (result) => result.lines.map((line) => line.title);
 const line = (result, pattern) => result.lines.find((item) => pattern.test(item.title));
+
+// Для 3D высота 1,8 м использует утверждённый тариф 1,7 м, а сама высота
+// в названии позиции остаётся той, которую указал клиент. Принимаются 3D, 3д
+// и запись через дефис.
+for (const request of ["70x1.8 3D", "70x1.8 3д", "70x1.8 3-д"]) {
+  const result = quote([request]);
+  const fence = line(result, /3D-сетка/);
+  assert.equal(fence.price, 1900);
+  assert.equal(fence.amount, 133000);
+  assert.match(fence.title, /1,8 м/);
+}
 
 // Ручной виджет: конструкции появляются только при явном указании.
 {

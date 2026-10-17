@@ -126,7 +126,7 @@ async function readPrices(env) {
 const MATERIALS = [
   { key: "profile_double", label: "Профлист двухсторонний", test: /двухстор|двустор|двойн|2\s*сторон|обе\s*сторон/i },
   { key: "picket_chess", label: "Евроштакетник шахматка", test: /шахмат|в\s*два\s*ряд|вразбеж/i },
-  { key: "mesh3d", label: "3D-сетка", test: /(?:3\s*[dд]|гиттер)/i },
+  { key: "mesh3d", label: "3D-сетка", test: /(?:3\s*[-–—]?\s*[dд]|гиттер)/i },
   { key: "chainlink", label: "Сетка-рабица", test: /рабиц/i },
   { key: "picket_single", label: "Евроштакетник один ряд", test: /(?:штакет|штает|евроштак)/i },
   { key: "profile_single", label: "Профлист односторонний", test: /(?:проф(?:лист|настил)?|профилист|проф\.|профиль|лист|сплошн|глух)/i },
@@ -213,7 +213,11 @@ function fenceLine(line, prices) {
   if (!match || !(num(match[1]) > 0)) return null;
   const material = materialIn(line);
   const height = heightIn(line);
-  const heightKey = Math.abs(height - 1.8) < 0.01 ? "1_8" : Math.abs(height - 1.7) < 0.01 ? "1_7" : Math.abs(height - 2) < 0.01 ? "2_0" : null;
+  // В прайсе для 3D есть высоты 1,7 и 2 м. Запрос «3D 1,8 м» —
+  // согласованный с заказчиком эквивалент тарифа 1,7 м; в смете остаётся
+  // указанная клиентом высота 1,8 м.
+  const priceHeight = material.key === "mesh3d" && Math.abs(height - 1.8) < 0.01 ? 1.7 : height;
+  const heightKey = Math.abs(priceHeight - 1.8) < 0.01 ? "1_8" : Math.abs(priceHeight - 1.7) < 0.01 ? "1_7" : Math.abs(priceHeight - 2) < 0.01 ? "2_0" : null;
   const price = explicitRate(line) || prices[`${material.key}_${heightKey}`];
   if (!Number.isFinite(price)) throw new Error(`Нет утверждённой цены: ${material.label}, высота ${height} м.`);
   return {

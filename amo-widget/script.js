@@ -552,9 +552,26 @@ define(['jquery', 'underscore'], function ($, _) {
       '<dd>' + esc(formatRubles(item.amount_rub)) + '</dd></div>';
   }
 
+  // Панель существует только в предпросмотре новой вкладки. Она не входит в
+  // документ сметы и скрывается при печати/сохранении в PDF.
+  function quotePreviewToolbar() {
+    return '<section class="quote-preview-toolbar" aria-label="Действия со сметой">' +
+      '<button class="quote-preview-toolbar__copy" type="button" data-copy-quote>Скопировать смету</button>' +
+      '<span class="quote-preview-toolbar__status" data-copy-status role="status" aria-live="polite"></span>' +
+      '</section>';
+  }
+
+  function quotePreviewStyles() {
+    return '.quote-preview-toolbar{width:100%;max-width:1240px;margin:22px auto -22px;padding:0 2px;display:flex;align-items:center;gap:12px;font-family:Arial,sans-serif}.quote-preview-toolbar__copy{appearance:none;cursor:pointer;border:1px solid #0b8fd3;border-radius:7px;padding:10px 14px;background:#0b8fd3;color:#fff;font:700 16px Arial,sans-serif;line-height:1.2}.quote-preview-toolbar__copy:hover{background:#086eae;border-color:#086eae}.quote-preview-toolbar__copy:focus-visible{outline:3px solid rgba(11,143,211,.3);outline-offset:2px}.quote-preview-toolbar__status{min-height:19px;color:#345785;font:15px Arial,sans-serif}@media screen and (max-width:1300px){.quote-preview-toolbar{max-width:calc(100% - 44px)}}@media print{.quote-preview-toolbar{display:none!important}}';
+  }
+
+  function quotePreviewScript() {
+    return '<script>(function(){var button=document.querySelector("[data-copy-quote]");var status=document.querySelector("[data-copy-status]");if(!button)return;function fallbackCopy(text){return new Promise(function(resolve,reject){var area=document.createElement("textarea");area.value=text;area.setAttribute("readonly","");area.style.position="fixed";area.style.opacity="0";document.body.appendChild(area);area.select();try{if(!document.execCommand("copy"))throw new Error("copy_failed");resolve();}catch(error){reject(error);}finally{document.body.removeChild(area);}});}function copyText(text){if(navigator.clipboard&&window.isSecureContext)return navigator.clipboard.writeText(text);return fallbackCopy(text);}button.addEventListener("click",function(){var quote=document.querySelector(".quote-document, .page");var text=quote&&quote.innerText?quote.innerText.replace(/\\n{3,}/g,"\\n\\n").trim():"";if(!text){status.textContent="Не удалось подготовить текст сметы.";return;}button.disabled=true;copyText(text).then(function(){status.textContent="Смета скопирована в буфер обмена.";}).catch(function(){status.textContent="Не удалось скопировать смету. Выделите текст вручную.";}).finally(function(){button.disabled=false;});});}());</script>';
+  }
+
   function quotePrintHtml(quote) {
     if (quote.document && quote.document.layoutVersion === 'fence-estimate-v1' && quote.document.html && quote.document.css) {
-      return '<!doctype html><html lang="ru"><head><meta charset="utf-8"><title>Смета на устройство забора</title><style>' + quote.document.css + '</style></head><body>' + quote.document.html + '</body></html>';
+      return '<!doctype html><html lang="ru"><head><meta charset="utf-8"><title>Смета на устройство забора</title><style>' + quote.document.css + quotePreviewStyles() + '</style></head><body>' + quotePreviewToolbar() + quote.document.html + quotePreviewScript() + '</body></html>';
     }
     var rows = (quote.line_items || []).map(function (item) {
       var details = item.description_lines && item.description_lines.length
@@ -564,7 +581,7 @@ define(['jquery', 'underscore'], function ($, _) {
     }).join('');
     return '<!doctype html><html lang="ru"><head><meta charset="utf-8"><title>' + esc(quote.heading || 'Смета') + '</title><style>' +
       '@page{size:A4;margin:10mm}body{font:12px Arial,sans-serif;color:#1e3347;margin:0;background:#f3f8fb}.page{max-width:1240px;margin:24px auto;padding:28px 32px 34px;background:#fff;box-shadow:0 2px 18px rgba(23,72,106,.12)}.title{margin:0 0 5px;color:#078bd3;font-size:20px;font-weight:700}.table{width:100%;border-collapse:collapse;margin-top:12px}.table th,.table td{border:1px solid #b8d9ec;padding:7px 8px;vertical-align:top}.table th{background:#ebf7fe;font-size:11px;text-align:center}.table td:nth-child(n+2){text-align:center;white-space:nowrap}.table td:last-child{text-align:right}.table ul{margin:4px 0 0;padding:0;list-style:none;color:#3d5970;line-height:1.3}.table li{margin:1px 0}.table li::before{content:"–";display:inline-block;width:12px;text-align:center;color:#3d5970}.total td{background:#e1f3fd;font-size:15px;font-weight:700;text-align:right!important}.total td:first-child{color:#078bd3}.note{margin-top:12px;color:#536f85;font-size:10px}.footer{margin-top:18px;padding:10px;border:1px solid #b8d9ec;background:#f7fcff}.footer b{color:#078bd3}@media(max-width:700px){.page{margin:0;padding:16px;box-shadow:none}.table{font-size:10px}.table th,.table td{padding:5px 4px}}@media print{body{background:#fff;print-color-adjust:exact;-webkit-print-color-adjust:exact}.page{max-width:none;margin:0;padding:0;box-shadow:none}}' +
-      '</style></head><body><main class="page"><h1 class="title">' + esc(quote.heading || 'Смета') + '</h1><table class="table"><thead><tr><th>Работы и материалы</th><th>Ед. изм.</th><th>Кол-во</th><th>Цена, руб.</th><th>Сумма, руб.</th></tr></thead><tbody>' + rows + '<tr class="total"><td colspan="4">Итого:</td><td>' + esc(formatRubles(quote.total_rub)) + '</td></tr></tbody></table><p class="note">Точная стоимость и состав работ подтверждаются после выездного замера.</p><section class="footer"><b>Наши преимущества</b><br>Проверяем материал микрометром перед установкой<br>Работаем по официальному договору<br>Гарантия на забор — 2 года<br>Устанавливаем забор от 1 дня</section></main></body></html>';
+      quotePreviewStyles() + '</style></head><body>' + quotePreviewToolbar() + '<main class="page"><h1 class="title">' + esc(quote.heading || 'Смета') + '</h1><table class="table"><thead><tr><th>Работы и материалы</th><th>Ед. изм.</th><th>Кол-во</th><th>Цена, руб.</th><th>Сумма, руб.</th></tr></thead><tbody>' + rows + '<tr class="total"><td colspan="4">Итого:</td><td>' + esc(formatRubles(quote.total_rub)) + '</td></tr></tbody></table><p class="note">Точная стоимость и состав работ подтверждаются после выездного замера.</p><section class="footer"><b>Наши преимущества</b><br>Проверяем материал микрометром перед установкой<br>Работаем по официальному договору<br>Гарантия на забор — 2 года<br>Устанавливаем забор от 1 дня</section></main>' + quotePreviewScript() + '</body></html>';
   }
 
   // The estimate opens in a separate tab and does not depend on n8n.
